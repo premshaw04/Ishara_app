@@ -1,4 +1,16 @@
 {
-  "name": "Ishara",
-  "displayName": "Ishara"
+  "expo": {
+    "name": "Ishara",
+    "slug": "ishara",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+    },
+    "web": {
+    }
+  }
 }
