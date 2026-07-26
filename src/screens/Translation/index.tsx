@@ -11,6 +11,8 @@ import { PrimaryButton } from '../../components/Buttons/PrimaryButton';
 import { OutlinedButton } from '../../components/Buttons/OutlinedButton';
 import { themeConstants } from '../../theme/themeConstants';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useDispatch } from 'react-redux';
+import { connectWebSocket, disconnectWebSocket } from '../../store/middleware/websocketMiddleware';
 
 export const TranslationScreen = () => {
   const theme = useTheme();
@@ -28,9 +30,26 @@ export const TranslationScreen = () => {
     };
   }, []);
   
-  // Dummy data
-  const detectedSign = "HELLO";
-  const speechOutput = "Hello";
+  const dispatch = useDispatch();
+  
+  // Real data from Backend via Redux Store
+  const predictionData = useSelector((state: RootState) => state.sensor.prediction);
+  const connectionStatus = useSelector((state: RootState) => state.sensor.status);
+
+  useEffect(() => {
+    // 1. Connect to the global backend socket when this screen opens
+    dispatch(connectWebSocket());
+
+    // 2. CLEANUP: Disconnect when the user leaves this screen
+    // (Optional: You might want to keep it connected globally, but since you are testing this feature specifically, we disconnect on leave)
+    return () => {
+      dispatch(disconnectWebSocket());
+    };
+  }, [dispatch]);
+
+  // Derive the text to show based on Redux state
+  const detectedSign = predictionData?.sign || (connectionStatus === 'connected' ? "Connected! Waiting for sign..." : "Connecting to backend...");
+  const speechOutput = predictionData?.sign || "Waiting for glove...";
   const selectedLanguage = settings.ttsLanguage;
 
   const handleSpeak = () => {

@@ -19,28 +19,15 @@ export const SplashScreen = () => {
 
   useEffect(() => {
     if (!isHydrating) {
-      if (isAuthenticated) {
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'Main' }],
-          })
-        );
-      } else {
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{
-              name: 'Auth',
-              state: {
-                routes: [{ name: hasSeenOnboarding ? 'Login' : 'Onboarding' }]
-              }
-            }],
-          })
-        );
-      }
+      // Route directly to Main (Home page) as requested
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        })
+      );
     }
-  }, [isHydrating, isAuthenticated, hasSeenOnboarding, navigation]);
+  }, [isHydrating, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
