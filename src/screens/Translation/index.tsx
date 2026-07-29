@@ -11,6 +11,8 @@ import { PrimaryButton } from '../../components/Buttons/PrimaryButton';
 import { OutlinedButton } from '../../components/Buttons/OutlinedButton';
 import { themeConstants } from '../../theme/themeConstants';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useDispatch } from 'react-redux';
+import { connectWebSocket, disconnectWebSocket, startWsRecognition, stopWsRecognition } from '../../store/middleware/websocketMiddleware';
 
 export const TranslationScreen = () => {
   const theme = useTheme();
@@ -20,6 +22,7 @@ export const TranslationScreen = () => {
   
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
 
   // Clean up TTS when unmounting
   useEffect(() => {
@@ -28,9 +31,36 @@ export const TranslationScreen = () => {
     };
   }, []);
   
-  // Dummy data
-  const detectedSign = "HELLO";
-  const speechOutput = "Hello";
+  const dispatch = useDispatch();
+  
+  // Real data from Backend via Redux Store
+  const predictionData = useSelector((state: RootState) => state.sensor.prediction);
+  const connectionStatus = useSelector((state: RootState) => state.sensor.status);
+  const flexSensors = useSelector((state: RootState) => state.sensor.flexSensors);
+  const orientation = useSelector((state: RootState) => state.sensor.orientation);
+
+  useEffect(() => {
+    // 1. Connect to the global backend socket when this screen opens
+    dispatch(connectWebSocket());
+
+    // 2. CLEANUP: Disconnect when the user leaves this screen
+    // (Optional: You might want to keep it connected globally, but since you are testing this feature specifically, we disconnect on leave)
+    return () => {
+      dispatch(disconnectWebSocket());
+    };
+  }, [dispatch]);
+
+  // Derive the text to show based on Redux state
+  const detectedSign = predictionData?.sign || (connectionStatus === 'connected' ? "Connected! Waiting for sign..." : "Connecting to backend...");
+  const speechOutput = predictionData?.sign || "Waiting for glove...";
+
+  // Auto-speak when a new prediction arrives
+  // Using the whole predictionData object so it triggers even if the model predicts the same word twice in a row
+  useEffect(() => {
+    if (predictionData && predictionData.sign) {
+      handleSpeak();
+    }
+  }, [predictionData]);
   const selectedLanguage = settings.ttsLanguage;
 
   const handleSpeak = () => {
@@ -74,6 +104,16 @@ export const TranslationScreen = () => {
     ttsService.stop();
     setIsSpeaking(false);
     setIsPaused(false);
+  };
+
+  const handleStartRecognition = () => {
+    dispatch(startWsRecognition());
+    setIsRecognizing(true);
+  };
+
+  const handleStopRecognition = () => {
+    dispatch(stopWsRecognition());
+    setIsRecognizing(false);
   };
 
   return (
@@ -141,20 +181,26 @@ export const TranslationScreen = () => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtonsContainer}>
-          {isSpeaking || isPaused ? (
+          {isRecognizing ? (
             <PrimaryButton 
-              title="Stop Speech" 
+              title="Stop Recognition" 
               icon="stop-circle-outline"
-              onPress={handleStop} 
+              onPress={handleStopRecognition} 
               style={{ backgroundColor: theme.colors.error }}
             />
           ) : (
             <PrimaryButton 
-              title="Speak" 
-              icon="volume-high"
-              onPress={handleSpeak} 
+              title="Start Recognition" 
+              icon="play-circle-outline"
+              onPress={handleStartRecognition} 
             />
           )}
+
+          <PrimaryButton 
+            title="Speak" 
+            icon="volume-high"
+            onPress={handleSpeak} 
+          />
           
           <OutlinedButton 
             title="Share" 

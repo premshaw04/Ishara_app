@@ -6,6 +6,7 @@ import {
   setConnectionError
 } from '../slices/sensorSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io, Socket } from 'socket.io-client';
 
 // Define WS Actions
 export const WS_CONNECT = 'ws/connect';
@@ -21,76 +22,67 @@ export const stopWsRecognition = () => ({ type: WS_STOP_RECOGNITION });
 
 // Placeholder base URL - configure this via environment variables later (.env)
 declare var process: any;
-const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.ishara.com/ws';
+const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://10.40.28.48:3000';
 
 export const websocketMiddleware: Middleware = store => {
-  let socket: WebSocket | null = null;
+  let socket: Socket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let reconnectAttempts = 0;
   const MAX_RECONNECT_ATTEMPTS = 5;
 
   const connect = async () => {
-    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    if (socket && socket.connected) {
       return;
     }
 
     store.dispatch(setConnectionStatus(reconnectAttempts > 0 ? 'reconnecting' : 'connecting'));
 
     try {
-      // Optional: Pass JWT token if backend requires authenticated WS
       const token = await AsyncStorage.getItem('userToken');
-      const url = token ? `${WS_BASE_URL}?token=${token}` : WS_BASE_URL;
+      
+      socket = io(WS_BASE_URL, {
+        auth: token ? { token } : undefined,
+        reconnection: false // We will handle reconnection manually for UI consistency
+      });
 
-      socket = new WebSocket(url);
-
-      socket.onopen = () => {
+      socket.on('connect', () => {
         reconnectAttempts = 0;
         store.dispatch(setConnectionStatus('connected'));
-      };
+      });
 
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          switch (data.type) {
-            case 'sensor_data':
-              store.dispatch(setSensorData({
-                flexSensors: data.payload.flexSensors || [0,0,0,0,0],
-                orientation: data.payload.orientation || { pitch: 0, roll: 0, yaw: 0 },
-                battery: data.payload.battery || null,
-              }));
-              break;
-            case 'prediction':
-              store.dispatch(setPrediction({
-                sign: data.payload.sign,
-                confidence: data.payload.confidence,
-              }));
-              break;
-            case 'status':
-              // Handle backend-specific status messages
-              break;
-            default:
-              console.warn('Unknown WS message type:', data.type);
-          }
-        } catch (err) {
-          console.error('Failed to parse WS message:', err);
+      // Handle ML prediction broadcasted by our Node.js backend
+      socket.on('ml_prediction_result', (result) => {
+        if (result && result.prediction) {
+          store.dispatch(setPrediction({
+            sign: result.prediction,
+            confidence: 100 // placeholder since backend doesn't send confidence yet
+          }));
         }
-      };
+      });
 
-      socket.onclose = (event: any) => {
-        socket = null;
-        if (event.wasClean || event.code === 1000) {
+      // Handle raw sensor data if needed
+      socket.on('sensor_data', (data) => {
+        store.dispatch(setSensorData({
+          flexSensors: data.payload?.flexSensors || [0,0,0,0,0],
+          orientation: data.payload?.orientation || { pitch: 0, roll: 0, yaw: 0 },
+          battery: data.payload?.battery || null,
+        }));
+      });
+
+      socket.on('disconnect', (reason) => {
+        if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+          // the disconnection was initiated by the server/client explicitly
           store.dispatch(setConnectionStatus('disconnected'));
         } else {
-          // Unexpected close, attempt reconnect
+          // unexpected close, attempt reconnect
           handleReconnect();
         }
-      };
+      });
 
-      socket.onerror = (error) => {
-        store.dispatch(setConnectionError('WebSocket connection error'));
-        // Error will also trigger onclose, which handles reconnect
-      };
+      socket.on('connect_error', (error) => {
+        store.dispatch(setConnectionError(error.message || 'WebSocket connection error'));
+        handleReconnect();
+      });
 
     } catch (err: any) {
       store.dispatch(setConnectionError(err.message || 'Failed to initialize WebSocket'));
@@ -101,7 +93,7 @@ export const websocketMiddleware: Middleware = store => {
   const handleReconnect = () => {
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts += 1;
-      const timeout = Math.min(10000, (2 ** reconnectAttempts) * 1000); // Exponential backoff (max 10s)
+      const timeout = Math.min(10000, (2 ** reconnectAttempts) * 1000); // Exponential backoff
       
       store.dispatch(setConnectionStatus('reconnecting'));
       
@@ -118,7 +110,7 @@ export const websocketMiddleware: Middleware = store => {
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectAttempts = 0;
     if (socket) {
-      socket.close(1000, 'User initiated disconnect');
+      socket.disconnect();
       socket = null;
     }
     store.dispatch(setConnectionStatus('disconnected'));
@@ -134,13 +126,13 @@ export const websocketMiddleware: Middleware = store => {
         disconnect();
         break;
       case WS_START_RECOGNITION:
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'command', command: 'start_recognition' }));
+        if (socket && socket.connected) {
+          socket.emit('command', { command: 'start_recognition' });
         }
         break;
       case WS_STOP_RECOGNITION:
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'command', command: 'stop_recognition' }));
+        if (socket && socket.connected) {
+          socket.emit('command', { command: 'stop_recognition' });
         }
         break;
       default:
