@@ -22,7 +22,7 @@ export const stopWsRecognition = () => ({ type: WS_STOP_RECOGNITION });
 
 // Placeholder base URL - configure this via environment variables later (.env)
 declare var process: any;
-const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://192.168.X.X:3000';
+const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://10.40.28.48:3000';
 
 export const websocketMiddleware: Middleware = store => {
   let socket: Socket | null = null;
