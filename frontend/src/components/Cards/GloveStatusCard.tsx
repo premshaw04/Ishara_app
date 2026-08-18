@@ -42,9 +42,8 @@ export const GloveStatusCard: React.FC = React.memo(() => {
         <Icon name={iconName} size={24} color={statusColor} />
       </View>
       <View style={styles.imageContainer}>
-        {/* Using a placeholder high-tech glove image from a reliable source */}
         <Image 
-          source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1000/1000889.png' }} 
+          source={theme.dark ? require('../../assets/glove_dark.png') : require('../../assets/glove.png')} 
           style={styles.image}
           resizeMode="contain"
         />
@@ -88,11 +87,10 @@ const styles = StyleSheet.create({
     marginTop: themeConstants.spacing.m,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 120, // To give it nice space
+    height: 140, // Expanded space for detailed glove graphics
   },
   image: {
-    width: 120,
-    height: 120,
-    tintColor: '#111827', // Dark color for the generic icon if needed, or leave it for colorful image
+    width: 160,
+    height: 140,
   }
 });

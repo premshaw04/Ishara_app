@@ -22,7 +22,7 @@ export const stopWsRecognition = () => ({ type: WS_STOP_RECOGNITION });
 
 // Placeholder base URL - configure this via environment variables later (.env)
 declare var process: any;
-const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://10.40.28.48:3000';
+const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://10.87.187.36:3000';
 
 export const websocketMiddleware: Middleware = store => {
   let socket: Socket | null = null;
@@ -52,10 +52,10 @@ export const websocketMiddleware: Middleware = store => {
 
       // Handle ML prediction broadcasted by our Node.js backend
       socket.on('ml_prediction_result', (result) => {
-        if (result && result.prediction) {
+        if (result && result.prediction && result.confidence >= 75.0 ) {
           store.dispatch(setPrediction({
-            sign: result.prediction,
-            confidence: 100 // placeholder since backend doesn't send confidence yet
+            sign: result.prediction || 'UNKNOWN',
+            confidence: Math.round(result.confidence ?? 0)
           }));
         }
       });

@@ -36,8 +36,6 @@ export const TranslationScreen = () => {
   // Real data from Backend via Redux Store
   const predictionData = useSelector((state: RootState) => state.sensor.prediction);
   const connectionStatus = useSelector((state: RootState) => state.sensor.status);
-  const flexSensors = useSelector((state: RootState) => state.sensor.flexSensors);
-  const orientation = useSelector((state: RootState) => state.sensor.orientation);
 
   useEffect(() => {
     // 1. Connect to the global backend socket when this screen opens
@@ -60,6 +58,7 @@ export const TranslationScreen = () => {
     if (predictionData && predictionData.sign) {
       handleSpeak();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [predictionData]);
   const selectedLanguage = settings.ttsLanguage;
 
@@ -100,11 +99,6 @@ export const TranslationScreen = () => {
     setIsSpeaking(false);
   };
 
-  const handleStop = () => {
-    ttsService.stop();
-    setIsSpeaking(false);
-    setIsPaused(false);
-  };
 
   const handleStartRecognition = () => {
     dispatch(startWsRecognition());
