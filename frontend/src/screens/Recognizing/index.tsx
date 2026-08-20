@@ -21,8 +21,6 @@ import { OutlinedButton } from '../../components/Buttons/OutlinedButton';
 import { PrimaryButton } from '../../components/Buttons/PrimaryButton';
 import { themeConstants } from '../../theme/themeConstants';
 
-const { width } = Dimensions.get('window');
-
 const WaveformBar = ({ index, isRecognizing, primaryColor }: { index: number, isRecognizing: boolean, primaryColor: string }) => {
   const height = useSharedValue(5);
   
@@ -42,6 +40,7 @@ const WaveformBar = ({ index, isRecognizing, primaryColor }: { index: number, is
     } else {
       height.value = withTiming(5, { duration: 300 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRecognizing, index]);
 
   const style = useAnimatedStyle(() => ({
@@ -72,6 +71,7 @@ const Dot = ({ index, isRecognizing, primaryColor }: { index: number, isRecogniz
     } else {
       opacity.value = withTiming(0.3, { duration: 300 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRecognizing, index]);
 
   const style = useAnimatedStyle(() => ({
@@ -98,6 +98,7 @@ export const RecognizingScreen = () => {
       // Stop when leaving
       dispatch(stopWsRecognition());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Rotate animation for the scanner ring
@@ -111,6 +112,7 @@ export const RecognizingScreen = () => {
         false
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRecognizing]);
 
   const animatedRingStyle = useAnimatedStyle(() => {
@@ -155,9 +157,9 @@ export const RecognizingScreen = () => {
           <View style={styles.circleContainer}>
             <Animated.View style={[styles.scannerRing, { borderColor: theme.colors.primary }, animatedRingStyle]} />
             <View style={[styles.innerCircle, { backgroundColor: theme.colors.surface }]}>
-              {/* Dummy 3D Glove Image */}
+              {/* 3D Robotic Glove Image */}
               <Image 
-                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1000/1000889.png' }}
+                source={theme.dark ? require('../../assets/glove_dark.png') : require('../../assets/glove.png')}
                 style={styles.gloveImage}
                 resizeMode="contain"
               />
@@ -279,8 +281,8 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   gloveImage: {
-    width: 120,
-    height: 120,
+    width: 145,
+    height: 145,
   },
   statusTextContainer: {
     marginTop: themeConstants.spacing.l,

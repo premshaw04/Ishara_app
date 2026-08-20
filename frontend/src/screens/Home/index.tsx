@@ -1,16 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { MainTabScreenProps } from '../../navigation/types';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { useDispatch } from 'react-redux';
 import { connectWebSocket } from '../../store/middleware/websocketMiddleware';
 import { GloveStatusCard } from '../../components/Cards/GloveStatusCard';
-import { LiveSensorCard } from '../../components/Cards/LiveSensorCard';
-import { OrientationCard } from '../../components/Cards/OrientationCard';
 import { PrimaryButton } from '../../components/Buttons/PrimaryButton';
 import { themeConstants } from '../../theme/themeConstants';
 
@@ -21,20 +18,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
   const navigation = useNavigation<any>(); // use any for now or specify root stack navigation
 
   const dispatch = useDispatch();
-  const { flexSensors, orientation } = useSelector((state: RootState) => state.sensor);
 
   React.useEffect(() => {
     dispatch(connectWebSocket());
   }, [dispatch]);
-
-  // Format real sensor data for UI
-  const sensorData = [
-    { label: 'Flex 1', value: flexSensors[0], progress: flexSensors[0] / 100 },
-    { label: 'Flex 2', value: flexSensors[1], progress: flexSensors[1] / 100 },
-    { label: 'Flex 3', value: flexSensors[2], progress: flexSensors[2] / 100 },
-    { label: 'Flex 4', value: flexSensors[3], progress: flexSensors[3] / 100 },
-    { label: 'Flex 5', value: flexSensors[4], progress: flexSensors[4] / 100 },
-  ];
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
@@ -45,10 +32,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
           {/* Removed unused Hamburger Menu for now since we use bottom tabs */}
           <View style={{ width: 28 }} />
           <View style={styles.headerTitleContainer}>
-            <Text style={[styles.headerTitle, { color: theme.colors.primary }]}>Ishara</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-              Sign Language Translator
-            </Text>
+            <Image 
+              source={theme.dark ? require('../../assets/tagline_dark.png') : require('../../assets/tagline.png')} 
+              style={styles.headerLogo} 
+              resizeMode="contain" 
+            />
           </View>
           <TouchableOpacity>
             <View>
@@ -61,12 +49,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
         {/* Content */}
         <View style={styles.cardsContainer}>
           <GloveStatusCard />
-          <LiveSensorCard sensors={sensorData} />
-          <OrientationCard 
-            pitch={orientation?.pitch || 0} 
-            roll={orientation?.roll || 0} 
-            yaw={orientation?.yaw || 0} 
-          />
           
           <PrimaryButton 
             title="Start Recognition" 
@@ -101,6 +83,12 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: themeConstants.spacing.s,
+  },
+  headerLogo: {
+    width: 220,
+    height: 50,
   },
   headerTitle: {
     fontFamily: themeConstants.typography.fontFamily.bold,
