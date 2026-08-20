@@ -8,18 +8,48 @@ import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 
 import { AppDispatch, RootState } from '../../store';
-import { login, clearAuthError } from '../../store/slices/authSlice';
+import { login, clearAuthError, googleLogin } from '../../store/slices/authSlice';
 import { loginSchema } from '../../utils/validationSchemas';
 import { AuthStackScreenProps } from '../../navigation/types';
-import { PrimaryButton, CustomInput, SectionTitle, showToast } from '../../components';;
+import { PrimaryButton, CustomInput, SectionTitle, showToast, GoogleButton } from '../../components';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const LoginScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<AuthStackScreenProps<'Login'>['navigation']>();
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.auth);
-  
+
   const [showPassword, setShowPassword] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    androidClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    iosClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    expoClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+  });
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.idToken) {
+        dispatch(googleLogin(authentication.idToken)).then((resultAction) => {
+          if (googleLogin.fulfilled.match(resultAction)) {
+            showToast('success', 'Welcome!', 'You have successfully logged in with Google.');
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Main' as never }],
+              })
+            );
+          }
+        });
+      }
+    }
+  }, [response]);
 
   const { control, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(loginSchema),
@@ -87,20 +117,31 @@ export const LoginScreen = () => {
             />
           )}
         />
-        
-        <TouchableOpacity 
-          style={styles.forgotPassword} 
+
+        <TouchableOpacity
+          style={styles.forgotPassword}
           onPress={() => navigation.navigate('ForgotPassword')}
         >
           <Text style={[styles.forgotText, { color: theme.colors.primary }]}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        <PrimaryButton 
-          title="Login" 
-          onPress={handleSubmit(onSubmit)} 
+        <PrimaryButton
+          title="Login"
+          onPress={handleSubmit(onSubmit)}
           loading={loading}
           disabled={loading}
           style={styles.button}
+        />
+
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <GoogleButton
+          onPress={() => promptAsync()}
+          disabled={!request || loading}
         />
       </View>
 
@@ -146,5 +187,21 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: themeConstants.spacing.l,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  dividerText: {
+    marginHorizontal: themeConstants.spacing.m,
+    color: 'rgba(0,0,0,0.4)',
+    fontFamily: themeConstants.typography.fontFamily.medium,
+    fontSize: themeConstants.typography.size.s,
   },
 });

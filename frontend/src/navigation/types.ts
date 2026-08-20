@@ -8,7 +8,7 @@ export type AuthStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   OTPVerification: { email: string };
-  ResetPassword: { email: string };
+  ResetPassword: { email: string; token: string };
 };
 
 // 2. Main Bottom Tabs Types
@@ -27,6 +27,7 @@ export type RootStackParamList = {
   
   // Fullscreen Stack Screens (navigated from Home/Learn/Profile)
   Recognizing: undefined;
+  EditProfile: undefined;
   Translation: { detectedSign: string } | undefined;
   CategoryDetail: { categoryId: string; categoryName: string };
   SignDetail: { signId: string };

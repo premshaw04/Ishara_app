@@ -27,9 +27,9 @@ export const OTPVerificationScreen = () => {
   const onSubmit = async (data: any) => {
     try {
       setLoading(true);
-      await authService.verifyOTP(email, data.otp);
+      const response = await authService.verifyOTP(email, data.otp);
       showToast('success', 'Verified', 'OTP verification successful.');
-      navigation.navigate('ResetPassword', { email });
+      navigation.navigate('ResetPassword', { email, token: response.token });
     } catch (error: any) {
       showToast('error', 'Verification Failed', error.message || 'Invalid OTP');
     } finally {
@@ -45,7 +45,7 @@ export const OTPVerificationScreen = () => {
         <View style={styles.header}>
           <SectionTitle title="Verification Code" style={{ fontSize: 28, color: theme.colors.primary }} />
           <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-            Enter the 4-digit code sent to <Text style={{ color: theme.colors.onSurface, fontFamily: themeConstants.typography.fontFamily.semibold }}>{email}</Text>
+            Enter the 6-digit code sent to <Text style={{ color: theme.colors.onSurface, fontFamily: themeConstants.typography.fontFamily.semibold }}>{email}</Text>
           </Text>
         </View>
 
@@ -55,12 +55,13 @@ export const OTPVerificationScreen = () => {
             name="otp"
             render={({ field: { onChange, value } }) => (
               <CustomInput
-                label="4-Digit OTP"
+                label="6-Digit OTP"
                 value={value}
                 onChangeText={onChange}
                 error={errors.otp?.message}
                 keyboardType="numeric"
                 leftIcon="numeric"
+                maxLength={6}
               />
             )}
           />

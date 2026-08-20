@@ -6,7 +6,7 @@ import { store, persistor, RootState } from './store';
 import { lightTheme, darkTheme } from './theme';
 import { AppNavigator } from './navigation';
 import { useColorScheme } from 'react-native';
-
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Toast } from './components';
 import { ErrorBoundary } from './components/Layout/ErrorBoundary';
@@ -20,12 +20,14 @@ const MainApp = () => {
   const theme = isDark ? darkTheme : lightTheme;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <PaperProvider theme={theme}>
-        <AppNavigator />
-      </PaperProvider>
-      <Toast />
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <PaperProvider theme={theme}>
+          <AppNavigator />
+        </PaperProvider>
+        <Toast />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 };
 

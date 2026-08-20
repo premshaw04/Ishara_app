@@ -19,11 +19,15 @@ export const SplashScreen = () => {
 
   useEffect(() => {
     if (!isHydrating) {
-      // Route directly to Main (Home page) as requested
+      let nextRoute = 'Main';
+      if (!hasSeenOnboarding || !isAuthenticated) {
+        nextRoute = 'Auth';
+      }
+      
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'Main' }],
+          routes: [{ name: nextRoute }],
         })
       );
     }

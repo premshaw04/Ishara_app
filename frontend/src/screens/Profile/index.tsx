@@ -3,12 +3,14 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-nat
 import { Text, useTheme, List, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
+import { RootState, AppDispatch } from '../../store';
 import { toggleTheme } from '../../store/slices/appSlice';
+import { logout } from '../../store/slices/authSlice';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
+import { showToast } from '../../components';
 import { themeConstants } from '../../theme/themeConstants';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -16,9 +18,12 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>
 export const ProfileScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const settings = useSelector((state: RootState) => state.settings);
   const isDarkMode = useSelector((state: RootState) => state.app.isDarkMode);
+  const user = useSelector((state: RootState) => state.auth.user);
+  
+  console.log('ProfileScreen Rendered! user object:', user);
 
   const handleNavigate = (screen: keyof RootStackParamList) => {
     navigation.navigate(screen as any);
@@ -57,16 +62,34 @@ export const ProfileScreen = () => {
         {/* User Card */}
         <View style={[styles.userCard, { backgroundColor: theme.colors.primary }]}>
           <View style={styles.userInfo}>
-            <Image 
-              source={{ uri: 'https://i.pravatar.cc/150?u=a042581f4e29026024d' }} 
-              style={styles.avatar} 
-            />
-            <View style={styles.userDetails}>
-              <Text style={styles.userName}>Prem Kumar</Text>
-              <Text style={styles.userEmail}>prem@email.com</Text>
+            {user?.profilePic ? (
+              <Image 
+                key={user.profilePic}
+                source={{ uri: user.profilePic }} 
+                style={styles.avatar} 
+              />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarPlaceholderText}>
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
+            <View style={[styles.userDetails, { flex: 1 }]}>
+              <Text style={styles.userName} numberOfLines={1}>{user?.name || 'Guest User'}</Text>
+              <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{user?.email || 'No email provided'}</Text>
+              {user?.phoneNumber ? (
+                <Text style={[styles.userPhone, { marginTop: 4 }]} numberOfLines={1}>{user.phoneNumber}</Text>
+              ) : null}
+              {user?.bio ? (
+                <Text style={[styles.userBio, { marginTop: 4 }]} numberOfLines={2}>{user.bio}</Text>
+              ) : null}
             </View>
           </View>
-          <TouchableOpacity style={styles.editButton}>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => handleNavigate('EditProfile')}
+          >
             <Text style={styles.editButtonText}>Edit</Text>
           </TouchableOpacity>
         </View>
@@ -87,7 +110,18 @@ export const ProfileScreen = () => {
         </View>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={async () => {
+            await dispatch(logout());
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Auth' }],
+              })
+            );
+          }}
+        >
           <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
           <Text style={[styles.logoutText, { color: theme.colors.error }]}>Log Out</Text>
         </TouchableOpacity>
@@ -126,6 +160,8 @@ const styles = StyleSheet.create({
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: themeConstants.spacing.m,
   },
   avatar: {
     width: 60,
@@ -133,6 +169,16 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  avatarPlaceholder: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarPlaceholderText: {
+    color: '#FFF',
+    fontFamily: themeConstants.typography.fontFamily.bold,
+    fontSize: 24,
   },
   userDetails: {
     marginLeft: themeConstants.spacing.m,
@@ -147,6 +193,17 @@ const styles = StyleSheet.create({
     color: '#E3EFFF',
     fontSize: themeConstants.typography.size.s,
     fontFamily: themeConstants.typography.fontFamily.regular,
+  },
+  userPhone: {
+    color: '#E3EFFF',
+    fontSize: themeConstants.typography.size.xs,
+    fontFamily: themeConstants.typography.fontFamily.medium,
+  },
+  userBio: {
+    color: '#FFFFFF',
+    fontSize: themeConstants.typography.size.xs,
+    fontFamily: themeConstants.typography.fontFamily.regular,
+    opacity: 0.9,
   },
   editButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

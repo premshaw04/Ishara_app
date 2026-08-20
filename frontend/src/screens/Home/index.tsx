@@ -42,9 +42,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
         
         {/* Custom Header */}
         <View style={styles.headerContainer}>
-          <TouchableOpacity onPress={() => {/* Open Drawer or Menu */}}>
-            <Icon name="menu" size={28} color={theme.colors.primary} />
-          </TouchableOpacity>
+          {/* Removed unused Hamburger Menu for now since we use bottom tabs */}
+          <View style={{ width: 28 }} />
           <View style={styles.headerTitleContainer}>
             <Text style={[styles.headerTitle, { color: theme.colors.primary }]}>Ishara</Text>
             <Text style={[styles.headerSubtitle, { color: theme.colors.onSurfaceVariant }]}>

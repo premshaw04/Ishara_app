@@ -2,6 +2,7 @@
 export * from './Buttons/PrimaryButton';
 export * from './Buttons/SecondaryButton';
 export * from './Buttons/OutlinedButton';
+export * from './GoogleButton';
 
 // Inputs
 export * from './Inputs/CustomInput';

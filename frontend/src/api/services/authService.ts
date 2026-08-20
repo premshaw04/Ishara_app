@@ -11,6 +11,11 @@ export const authService = {
     return response.data;
   },
 
+  googleLogin: async (idToken: string) => {
+    const response = await apiClient.post('/auth/google', { idToken });
+    return response.data;
+  },
+
   forgotPassword: async (email: string) => {
     const response = await apiClient.post('/auth/forgot-password', { email });
     return response.data;

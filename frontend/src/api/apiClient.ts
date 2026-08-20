@@ -7,7 +7,7 @@ declare var process: any;
 
 
 // Placeholder base URL - configure this via environment variables later (.env)
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.ishara.com/v1';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.ishara.com/v1';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

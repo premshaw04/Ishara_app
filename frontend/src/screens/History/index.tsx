@@ -1,79 +1,153 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, SectionList, SafeAreaView, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, SectionList, ActivityIndicator, Alert, Platform, StatusBar } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Searchbar, Surface, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { themeConstants } from '../../theme/themeConstants';
 import { Skeleton } from '../../components/Indicators/Skeleton';
-
-// Dummy Data
-const INITIAL_DATA = [
-  {
-    title: 'Today',
-    data: [
-      { id: '1', sign: 'HELLO', emoji: '👋', time: '09:41 AM', confidence: 92 },
-      { id: '2', sign: 'THANK YOU', emoji: '🙏', time: '09:38 AM', confidence: 95 },
-      { id: '3', sign: 'GOOD MORNING', emoji: '🌅', time: '09:35 AM', confidence: 88 },
-      { id: '4', sign: 'HOW ARE YOU?', emoji: '🤝', time: '09:32 AM', confidence: 90 },
-      { id: '5', sign: 'YES', emoji: '👍', time: '09:30 AM', confidence: 98 },
-      { id: '6', sign: 'NO', emoji: '👎', time: '09:28 AM', confidence: 97 },
-    ],
-  },
-  {
-    title: 'Yesterday',
-    data: [
-      { id: '7', sign: 'PLEASE', emoji: '🥺', time: '05:15 PM', confidence: 85 },
-      { id: '8', sign: 'SORRY', emoji: '😔', time: '04:20 PM', confidence: 89 },
-    ],
-  },
-];
+import { historyService } from '../../api/services/historyService';
+import { showToast } from '../../components';
 
 export const HistoryScreen = () => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [historyData, setHistoryData] = useState(INITIAL_DATA);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const fetchHistory = async () => {
+    try {
+      setIsLoading(true);
+      const data = await historyService.getHistoryLogs();
+      const groupedData = groupHistoryData(data);
+      setHistoryData(groupedData);
+    } catch (error) {
+      showToast('error', 'Error', 'Failed to fetch history');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const groupHistoryData = (data: any[]) => {
+    const groups: { [key: string]: any[] } = { '⭐ Saved Phrases': [], 'Today': [], 'Yesterday': [], 'This Week': [], 'Older': [] };
+    const now = new Date();
+    
+    data.forEach(item => {
+      const date = new Date(item.createdAt);
+      // Strip time for diffing
+      const diffTime = Math.abs(now.setHours(0,0,0,0) - new Date(item.createdAt).setHours(0,0,0,0));
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      const time = new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const formattedItem = {
+        id: item._id,
+        sign: item.details?.sign || 'Unknown',
+        emoji: '🧏', 
+        time,
+        confidence: item.details?.confidence || 0,
+        isFavorite: item.isFavorite || false,
+      };
+
+      if (formattedItem.isFavorite) {
+        groups['⭐ Saved Phrases'].push(formattedItem);
+      } else if (diffDays === 0) {
+        groups['Today'].push(formattedItem);
+      } else if (diffDays === 1) {
+        groups['Yesterday'].push(formattedItem);
+      } else if (diffDays <= 7) {
+        groups['This Week'].push(formattedItem);
+      } else {
+        groups['Older'].push(formattedItem);
+      }
+    });
+
+    return Object.keys(groups)
+      .filter(key => groups[key].length > 0)
+      .map(key => ({
+        title: key,
+        data: groups[key]
+      }));
+  };
 
   // Search filter
   const filteredData = useMemo(() => {
-    if (!searchQuery) return historyData;
+    if (!historyData) return [];
+    
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    if (!trimmedQuery) return historyData;
+    
+    // Split the query into multiple keywords to support searching for "thank you" or just "you"
+    const keywords = trimmedQuery.split(/\s+/);
     
     return historyData.map(section => ({
       ...section,
-      data: section.data.filter(item => 
-        item.sign.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      data: section.data.filter((item: any) => {
+        const signText = (item.sign || '').toLowerCase();
+        // Return true only if ALL keywords are found in the sign text
+        return keywords.every(kw => signText.includes(kw));
+      })
     })).filter(section => section.data.length > 0);
   }, [searchQuery, historyData]);
 
-  const handleDelete = (id: string) => {
-    const newData = historyData.map(section => ({
-      ...section,
-      data: section.data.filter(item => item.id !== id)
-    })).filter(section => section.data.length > 0);
-    setHistoryData(newData);
+  const handleDelete = async (id: string) => {
+    try {
+      setIsDeleting(true);
+      await historyService.deleteHistoryLog(id);
+      
+      const newData = historyData.map(section => ({
+        ...section,
+        data: section.data.filter((item: any) => item.id !== id)
+      })).filter(section => section.data.length > 0);
+      setHistoryData(newData);
+      showToast('success', 'Deleted', 'History log removed');
+    } catch (error) {
+      showToast('error', 'Error', 'Failed to delete history');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleClearAll = () => {
+    Alert.alert(
+      "Clear History",
+      "Are you sure you want to delete all history? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await historyService.clearAllHistory();
+              setHistoryData([]);
+              showToast('success', 'Cleared', 'All history logs removed');
+            } catch (error) {
+              showToast('error', 'Error', 'Failed to clear history');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleToggleFavorite = async (id: string) => {
+    try {
+      await historyService.toggleFavorite(id);
+      await fetchHistory(); 
+    } catch (error) {
+      showToast('error', 'Error', 'Failed to update favorite status');
+    }
   };
 
   const handlePlaySpeech = (sign: string) => {
     console.log(`Playing speech for: ${sign}`);
     // Dummy speech play action
-  };
-
-  const loadMore = () => {
-    if (isLoadingMore) return;
-    setIsLoadingMore(true);
-    setTimeout(() => {
-      setHistoryData(prev => [
-        ...prev,
-        {
-          title: 'Last Week',
-          data: [
-            { id: Math.random().toString(), sign: 'WATER', emoji: '💧', time: '10:00 AM', confidence: 91 },
-            { id: Math.random().toString(), sign: 'FOOD', emoji: '🍔', time: '09:00 AM', confidence: 84 },
-          ]
-        }
-      ]);
-      setIsLoadingMore(false);
-    }, 1500);
   };
 
   const renderItem = ({ item }: { item: any }) => (
@@ -91,6 +165,13 @@ export const HistoryScreen = () => {
         </View>
         
         <View style={styles.actions}>
+          <IconButton
+            icon={item.isFavorite ? "star" : "star-outline"}
+            size={24}
+            iconColor={item.isFavorite ? "#FFD700" : theme.colors.onSurfaceVariant}
+            onPress={() => handleToggleFavorite(item.id)}
+            style={styles.actionButton}
+          />
           <IconButton
             icon="delete-outline"
             size={20}
@@ -127,11 +208,22 @@ export const HistoryScreen = () => {
   );
 
   const renderFooter = () => {
-    if (!isLoadingMore) return null;
+    if (isLoading) {
+      return (
+        <View style={styles.footerLoader}>
+          <Skeleton width="100%" height={72} borderRadius={16} style={{ marginBottom: 16 }} />
+          <Skeleton width="100%" height={72} borderRadius={16} style={{ marginBottom: 16 }} />
+          <Skeleton width="100%" height={72} borderRadius={16} />
+        </View>
+      );
+    }
+    
+    // If not loading and we have data or empty state is handled elsewhere, show the 7-day notice
     return (
-      <View style={styles.footerLoader}>
-        <Skeleton width="100%" height={72} borderRadius={16} style={{ marginBottom: 16 }} />
-        <Skeleton width="100%" height={72} borderRadius={16} />
+      <View style={styles.disclaimerContainer}>
+        <Text style={[styles.disclaimerText, { color: theme.colors.onSurfaceVariant }]}>
+          History only keeps the last 7 days of data.
+        </Text>
       </View>
     );
   };
@@ -139,14 +231,15 @@ export const HistoryScreen = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, StatusBar.currentHeight || 0) + 10 }]}>
         <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>History</Text>
         <IconButton
-          icon="calendar-month-outline"
+          icon="delete-sweep-outline"
           size={24}
-          iconColor={theme.colors.primary}
-          onPress={() => console.log('Filter pressed')}
+          iconColor={theme.colors.error}
+          onPress={handleClearAll}
           style={styles.headerIcon}
+          disabled={!historyData || historyData.length === 0}
         />
       </View>
 
@@ -169,11 +262,9 @@ export const HistoryScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        ListEmptyComponent={renderEmptyState}
+        ListEmptyComponent={!isLoading ? renderEmptyState : null}
         ListFooterComponent={renderFooter}
         contentContainerStyle={styles.listContent}
-        onEndReached={searchQuery ? undefined : loadMore}
-        onEndReachedThreshold={0.5}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
       />
@@ -292,5 +383,16 @@ const styles = StyleSheet.create({
     paddingVertical: themeConstants.spacing.l,
     alignItems: 'center',
   },
+  disclaimerContainer: {
+    paddingVertical: themeConstants.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disclaimerText: {
+    fontFamily: themeConstants.typography.fontFamily.medium,
+    fontSize: themeConstants.typography.size.xs,
+    textAlign: 'center',
+    opacity: 0.7,
+  }
 });
 

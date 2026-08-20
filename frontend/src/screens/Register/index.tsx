@@ -9,10 +9,14 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { authService } from '../../api/services/authService';
 import { registerSchema } from '../../utils/validationSchemas';
 import { AuthStackScreenProps } from '../../navigation/types';
-import { PrimaryButton, CustomInput, SectionTitle, showToast, Header } from '../../components';;
+import { PrimaryButton, CustomInput, SectionTitle, showToast, Header, GoogleButton } from '../../components';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { login } from '../../store/slices/authSlice'; // Re-use login thunk internally for state
+import { login, googleLogin } from '../../store/slices/authSlice';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const RegisterScreen = () => {
   const theme = useTheme();
@@ -21,6 +25,32 @@ export const RegisterScreen = () => {
   
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    androidClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    iosClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    expoClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+  });
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.idToken) {
+        dispatch(googleLogin(authentication.idToken)).then((resultAction) => {
+          if (googleLogin.fulfilled.match(resultAction)) {
+            showToast('success', 'Account Created', 'Welcome to Ishara!');
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Main' as never }],
+              })
+            );
+          }
+        });
+      }
+    }
+  }, [response]);
 
   const { control, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(registerSchema),
@@ -41,7 +71,8 @@ export const RegisterScreen = () => {
         })
       );
     } catch (error: any) {
-      showToast('error', 'Registration Failed', error.message || 'Something went wrong');
+      const errorMsg = error.response?.data?.message || error.message || 'Something went wrong';
+      showToast('error', 'Registration Failed', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -111,6 +142,17 @@ export const RegisterScreen = () => {
             disabled={loading}
             style={styles.button}
           />
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <GoogleButton 
+            onPress={() => promptAsync()} 
+            disabled={!request || loading} 
+          />
         </View>
 
         <View style={styles.footer}>
@@ -152,5 +194,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 'auto',
     paddingBottom: themeConstants.spacing.l,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: themeConstants.spacing.l,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  dividerText: {
+    marginHorizontal: themeConstants.spacing.m,
+    color: 'rgba(0,0,0,0.4)',
+    fontFamily: themeConstants.typography.fontFamily.medium,
+    fontSize: themeConstants.typography.size.s,
   },
 });

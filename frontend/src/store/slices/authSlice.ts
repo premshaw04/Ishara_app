@@ -6,6 +6,9 @@ interface User {
   id: string;
   name: string;
   email: string;
+  bio?: string;
+  phoneNumber?: string;
+  profilePic?: string;
 }
 
 interface AuthState {
@@ -64,12 +67,53 @@ export const login = createAsyncThunk('auth/login', async (credentials: any, { r
         await AsyncStorage.setItem('userRefreshToken', data.refresh_token);
     }
     
-    if (data.user) {
-        await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+    const userObj = data.user || { 
+      id: data._id || data.id, 
+      name: data.name, 
+      email: data.email,
+      bio: data.bio,
+      phoneNumber: data.phoneNumber,
+      profilePic: data.profilePic
+    };
+    
+    if (userObj.id) {
+        await AsyncStorage.setItem('userData', JSON.stringify(userObj));
     }
+    
+    // Add userObj to the returned data so reducers can use it
+    data.userObj = userObj;
+    
     return data;
   } catch (error: any) {
     const message = error.response?.data?.message || error.message || 'Login failed';
+    return rejectWithValue(message);
+  }
+});
+
+export const googleLogin = createAsyncThunk('auth/googleLogin', async (idToken: string, { rejectWithValue }) => {
+  try {
+    const data = await authService.googleLogin(idToken);
+    await AsyncStorage.setItem('userToken', data.access_token);
+    if (data.refresh_token) {
+      await AsyncStorage.setItem('userRefreshToken', data.refresh_token);
+    }
+    
+    const userObj = data.user || { 
+      id: data._id || data.id, 
+      name: data.name, 
+      email: data.email,
+      bio: data.bio,
+      phoneNumber: data.phoneNumber,
+      profilePic: data.profilePic
+    };
+    
+    if (userObj.id) {
+      await AsyncStorage.setItem('userData', JSON.stringify(userObj));
+    }
+    
+    return { user: userObj, token: data.access_token };
+  } catch (error: any) {
+    const message = error.response?.data?.message || error.message || 'Google Login failed';
     return rejectWithValue(message);
   }
 });
@@ -81,12 +125,41 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   return null;
 });
 
+export const updateUserProfile = createAsyncThunk('auth/updateProfile', async (profileData: any, { rejectWithValue }) => {
+  try {
+    const { profileService } = await import('../../api/services/profileService');
+    const data = await profileService.updateProfile(profileData);
+    
+    const userObj = { 
+      id: data._id || data.id, 
+      name: data.name, 
+      email: data.email,
+      bio: data.bio,
+      phoneNumber: data.phoneNumber,
+      profilePic: data.profilePic
+    };
+    
+    await AsyncStorage.setItem('userData', JSON.stringify(userObj));
+    return userObj;
+  } catch (error: any) {
+    const message = error.response?.data?.message || error.message || 'Profile update failed';
+    return rejectWithValue(message);
+  }
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
     clearAuthError: (state) => {
       state.error = null;
+    },
+    updateLocalProfilePic: (state, action: PayloadAction<string>) => {
+      if (state.user) {
+        state.user.profilePic = action.payload;
+        // Also fire off an async storage update in the background
+        AsyncStorage.setItem('userData', JSON.stringify(state.user)).catch(e => console.log('AsyncStorage error:', e));
+      }
     }
   },
   extraReducers: (builder) => {
@@ -111,20 +184,41 @@ const authSlice = createSlice({
       state.loading = false;
       state.isAuthenticated = true;
       state.token = action.payload.token || action.payload.access_token;
-      state.user = action.payload.user;
+      state.user = action.payload.userObj || action.payload.user;
     });
     builder.addCase(login.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload as string;
     });
+
+    // Google Login
+    builder.addCase(googleLogin.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(googleLogin.fulfilled, (state, action) => {
+      state.loading = false;
+      state.isAuthenticated = true;
+      state.token = action.payload.token;
+      state.user = action.payload.user;
+    });
+    builder.addCase(googleLogin.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+    });
+
     // Logout
     builder.addCase(logout.fulfilled, (state) => {
       state.isAuthenticated = false;
       state.token = null;
       state.user = null;
     });
+    // Update Profile
+    builder.addCase(updateUserProfile.fulfilled, (state, action) => {
+      state.user = action.payload;
+    });
   }
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, updateLocalProfilePic } = authSlice.actions;
 export default authSlice.reducer;

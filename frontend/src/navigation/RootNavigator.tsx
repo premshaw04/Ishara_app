@@ -14,6 +14,7 @@ import { SignDetailScreen } from '../screens/SignDetail';
 import { CategoryDetailScreen } from '../screens/CategoryDetail';
 import { GloveSettingsScreen } from '../screens/GloveSettings';
 import { AboutScreen } from '../screens/About';
+import { EditProfileScreen } from '../screens/EditProfile';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -56,6 +57,11 @@ export const RootNavigator = () => {
         name="About" 
         component={AboutScreen} 
         options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen 
+        name="EditProfile" 
+        component={EditProfileScreen} 
+        options={{ animation: 'slide_from_bottom' }}
       />
     </Stack.Navigator>
   );

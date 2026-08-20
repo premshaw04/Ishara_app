@@ -15,7 +15,7 @@ export const ResetPasswordScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<AuthStackScreenProps<'ResetPassword'>['navigation']>();
   const route = useRoute<AuthStackScreenProps<'ResetPassword'>['route']>();
-  const { email } = route.params;
+  const { email, token } = route.params;
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +28,7 @@ export const ResetPasswordScreen = () => {
   const onSubmit = async (data: any) => {
     try {
       setLoading(true);
-      await authService.resetPassword(data.password, ''); // Pass empty token for dummy, or retrieve if passed
+      await authService.resetPassword(data.password, token);
       showToast('success', 'Success', 'Your password has been successfully reset. Please log in.');
       navigation.navigate('Login');
     } catch (error: any) {

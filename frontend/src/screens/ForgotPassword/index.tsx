@@ -28,7 +28,8 @@ export const ForgotPasswordScreen = () => {
       showToast('success', 'OTP Sent', 'Please check your email for the verification code.');
       navigation.navigate('OTPVerification', { email: data.email });
     } catch (error: any) {
-      showToast('error', 'Error', error.message || 'Failed to send OTP');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to send OTP';
+      showToast('error', 'Error', errorMsg);
     } finally {
       setLoading(false);
     }
