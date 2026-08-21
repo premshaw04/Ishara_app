@@ -32,6 +32,7 @@ export type RootStackParamList = {
   CategoryDetail: { categoryId: string; categoryName: string };
   SignDetail: { signId: string };
   GloveSettings: undefined;
+  Calibration: undefined;
   About: undefined;
 };
 

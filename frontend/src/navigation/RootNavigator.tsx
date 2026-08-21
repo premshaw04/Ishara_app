@@ -13,6 +13,7 @@ import { TranslationScreen } from '../screens/Translation';
 import { SignDetailScreen } from '../screens/SignDetail';
 import { CategoryDetailScreen } from '../screens/CategoryDetail';
 import { GloveSettingsScreen } from '../screens/GloveSettings';
+import { CalibrationScreen } from '../screens/Calibration';
 import { AboutScreen } from '../screens/About';
 import { EditProfileScreen } from '../screens/EditProfile';
 
@@ -51,6 +52,11 @@ export const RootNavigator = () => {
       <Stack.Screen 
         name="GloveSettings" 
         component={GloveSettingsScreen} 
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen 
+        name="Calibration" 
+        component={CalibrationScreen} 
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen 

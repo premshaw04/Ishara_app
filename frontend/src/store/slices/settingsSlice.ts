@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_CALIBRATION_PROFILE, CalibrationProfile } from '../../utils/calibration';
 
 export interface SettingsState {
   ttsLanguage: string;
@@ -7,6 +8,11 @@ export interface SettingsState {
   ttsVoiceName: string | null; // e.g. "Male", "Female", or specific voice name
   ttsSpeed: number;
   ttsPitch: number;
+  // Glove Calibration
+  isCalibrated: boolean;
+  lastCalibratedAt: string | null;
+  flexMin: number[];
+  flexMax: number[];
   isHydrating: boolean;
 }
 
@@ -16,6 +22,10 @@ const initialState: SettingsState = {
   ttsVoiceName: 'System Default',
   ttsSpeed: 1.0,
   ttsPitch: 1.0,
+  isCalibrated: DEFAULT_CALIBRATION_PROFILE.isCalibrated,
+  lastCalibratedAt: DEFAULT_CALIBRATION_PROFILE.lastCalibratedAt,
+  flexMin: DEFAULT_CALIBRATION_PROFILE.flexMin,
+  flexMax: DEFAULT_CALIBRATION_PROFILE.flexMax,
   isHydrating: true,
 };
 
@@ -26,6 +36,16 @@ export const hydrateSettings = createAsyncThunk('settings/hydrate', async () => 
   const voiceName = await AsyncStorage.getItem('ttsVoiceName');
   const speedStr = await AsyncStorage.getItem('ttsSpeed');
   const pitchStr = await AsyncStorage.getItem('ttsPitch');
+  const calibrationStr = await AsyncStorage.getItem('gloveCalibration');
+
+  let calibration: CalibrationProfile = DEFAULT_CALIBRATION_PROFILE;
+  if (calibrationStr) {
+    try {
+      calibration = JSON.parse(calibrationStr);
+    } catch {
+      // Use defaults if parse fails
+    }
+  }
 
   return {
     ttsLanguage: language || 'en-US',
@@ -33,6 +53,10 @@ export const hydrateSettings = createAsyncThunk('settings/hydrate', async () => 
     ttsVoiceName: voiceName || 'System Default',
     ttsSpeed: speedStr ? parseFloat(speedStr) : 1.0,
     ttsPitch: pitchStr ? parseFloat(pitchStr) : 1.0,
+    isCalibrated: calibration.isCalibrated ?? false,
+    lastCalibratedAt: calibration.lastCalibratedAt ?? null,
+    flexMin: calibration.flexMin ?? DEFAULT_CALIBRATION_PROFILE.flexMin,
+    flexMax: calibration.flexMax ?? DEFAULT_CALIBRATION_PROFILE.flexMax,
   };
 });
 
@@ -62,6 +86,30 @@ const settingsSlice = createSlice({
       state.ttsPitch = action.payload;
       AsyncStorage.setItem('ttsPitch', action.payload.toString());
     },
+    saveCalibrationProfile: (
+      state,
+      action: PayloadAction<{ flexMin: number[]; flexMax: number[] }>
+    ) => {
+      state.flexMin = action.payload.flexMin;
+      state.flexMax = action.payload.flexMax;
+      state.isCalibrated = true;
+      state.lastCalibratedAt = new Date().toISOString();
+
+      const profile: CalibrationProfile = {
+        isCalibrated: true,
+        lastCalibratedAt: state.lastCalibratedAt,
+        flexMin: state.flexMin,
+        flexMax: state.flexMax,
+      };
+      AsyncStorage.setItem('gloveCalibration', JSON.stringify(profile));
+    },
+    resetCalibration: (state) => {
+      state.isCalibrated = false;
+      state.lastCalibratedAt = null;
+      state.flexMin = DEFAULT_CALIBRATION_PROFILE.flexMin;
+      state.flexMax = DEFAULT_CALIBRATION_PROFILE.flexMax;
+      AsyncStorage.removeItem('gloveCalibration');
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(hydrateSettings.fulfilled, (state, action) => {
@@ -70,11 +118,23 @@ const settingsSlice = createSlice({
       state.ttsVoiceName = action.payload.ttsVoiceName;
       state.ttsSpeed = action.payload.ttsSpeed;
       state.ttsPitch = action.payload.ttsPitch;
+      state.isCalibrated = action.payload.isCalibrated;
+      state.lastCalibratedAt = action.payload.lastCalibratedAt;
+      state.flexMin = action.payload.flexMin;
+      state.flexMax = action.payload.flexMax;
       state.isHydrating = false;
     });
   }
 });
 
-export const { setTtsLanguage, setTtsVoice, setTtsSpeed, setTtsPitch } = settingsSlice.actions;
+export const {
+  setTtsLanguage,
+  setTtsVoice,
+  setTtsSpeed,
+  setTtsPitch,
+  saveCalibrationProfile,
+  resetCalibration,
+} = settingsSlice.actions;
 
 export default settingsSlice.reducer;
+
