@@ -52,53 +52,45 @@ export const TranslationScreen = () => {
   const detectedSign = predictionData?.sign || (connectionStatus === 'connected' ? "Connected! Waiting for sign..." : "Connecting to backend...");
   const speechOutput = predictionData?.sign || "Waiting for glove...";
 
-  // Auto-speak when a new prediction arrives
-  // Using the whole predictionData object so it triggers even if the model predicts the same word twice in a row
-  useEffect(() => {
-    if (predictionData && predictionData.sign) {
-      handleSpeak();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [predictionData]);
-  const selectedLanguage = settings.ttsLanguage;
+  const [lastSpokenSign, setLastSpokenSign] = useState<string | null>(null);
 
-  const handleSpeak = () => {
-    if (isPaused) {
-      ttsService.resume();
-      setIsPaused(false);
-      setIsSpeaking(true);
-      return;
-    }
-
+  const handleSpeak = (textToSpeak?: string | any) => {
+    const text = typeof textToSpeak === 'string' ? textToSpeak : speechOutput;
+    console.log("🗣️ Triggering Speech for:", text);
+    
+    // Immediately trigger speak with absolute minimal options
+    // Removing the .stop() call entirely as it often aborts the subsequent .speak() call on some Android phones.
     setIsSpeaking(true);
     setIsPaused(false);
-    ttsService.speak(speechOutput, {
-      language: settings.ttsLanguage,
-      voice: settings.ttsVoiceId || undefined,
-      rate: settings.ttsSpeed,
-      pitch: settings.ttsPitch,
-      onDone: () => {
-        setIsSpeaking(false);
-        setIsPaused(false);
-      },
-      onStopped: () => {
-        setIsSpeaking(false);
-        setIsPaused(false);
-      },
+    
+    ttsService.speak(text, {
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
       onError: (e) => {
-        setIsSpeaking(false);
-        setIsPaused(false);
         console.error("TTS Error:", e);
+        setIsSpeaking(false);
       }
     });
   };
+
+  // Auto-speak when a new prediction arrives
+  useEffect(() => {
+    if (isRecognizing && predictionData && predictionData.sign) {
+      if (predictionData.sign !== lastSpokenSign) {
+        setLastSpokenSign(predictionData.sign);
+        handleSpeak(predictionData.sign);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [predictionData, isRecognizing]);
+  
+  const selectedLanguage = settings.ttsLanguage;
 
   const handlePause = () => {
     ttsService.pause();
     setIsPaused(true);
     setIsSpeaking(false);
   };
-
 
   const handleStartRecognition = () => {
     dispatch(startWsRecognition());

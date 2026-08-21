@@ -20,6 +20,8 @@ import { BaseCard } from '../../components/Cards/BaseCard';
 import { OutlinedButton } from '../../components/Buttons/OutlinedButton';
 import { PrimaryButton } from '../../components/Buttons/PrimaryButton';
 import { themeConstants } from '../../theme/themeConstants';
+import { ttsService } from '../../services/ttsService';
+import { historyService } from '../../api/services/historyService';
 
 const WaveformBar = ({ index, isRecognizing, primaryColor }: { index: number, isRecognizing: boolean, primaryColor: string }) => {
   const height = useSharedValue(5);
@@ -90,6 +92,7 @@ export const RecognizingScreen = () => {
   
   const [isRecognizing, setIsRecognizing] = useState(false);
   const prediction = useSelector((state: RootState) => state.sensor.prediction);
+  const [lastSpokenSign, setLastSpokenSign] = useState<string | null>(null);
   
   useEffect(() => {
     // Start recognition automatically on mount
@@ -97,9 +100,27 @@ export const RecognizingScreen = () => {
     return () => {
       // Stop when leaving
       dispatch(stopWsRecognition());
+      ttsService.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-speak and Save to History when a new prediction arrives
+  useEffect(() => {
+    if (isRecognizing && prediction && prediction.sign && prediction.sign !== 'WAITING...') {
+      if (prediction.sign !== lastSpokenSign) {
+        setLastSpokenSign(prediction.sign);
+        ttsService.stop(); // cancel previous speech
+        ttsService.speak(prediction.sign);
+        
+        // Save to History
+        historyService.addHistoryLog({
+          sign: prediction.sign,
+          confidence: prediction.confidence || 90
+        }).catch(err => console.error("Failed to save history:", err));
+      }
+    }
+  }, [prediction, isRecognizing, lastSpokenSign]);
 
   // Rotate animation for the scanner ring
   const rotation = useSharedValue(0);

@@ -1,20 +1,24 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, SectionList, ActivityIndicator, Alert, Platform, StatusBar } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, Searchbar, Surface, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { themeConstants } from '../../theme/themeConstants';
 import { Skeleton } from '../../components/Indicators/Skeleton';
 import { historyService } from '../../api/services/historyService';
+import { ttsService } from '../../services/ttsService';
 import { showToast } from '../../components';
 
 export const HistoryScreen = () => {
+
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -29,9 +33,16 @@ export const HistoryScreen = () => {
     }
   };
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistory();
+      // Cleanup playing state if leaving tab
+      return () => {
+        ttsService.stop();
+        setPlayingId(null);
+      };
+    }, [])
+  );
 
   const groupHistoryData = (data: any[]) => {
     const groups: { [key: string]: any[] } = { '⭐ Saved Phrases': [], 'Today': [], 'Yesterday': [], 'This Week': [], 'Older': [] };
@@ -145,9 +156,22 @@ export const HistoryScreen = () => {
     }
   };
 
-  const handlePlaySpeech = (sign: string) => {
+  const handlePlaySpeech = (id: string, sign: string) => {
+    if (playingId === id) {
+      ttsService.stop();
+      setPlayingId(null);
+      return;
+    }
+
     console.log(`Playing speech for: ${sign}`);
-    // Dummy speech play action
+    ttsService.stop(); // stop any ongoing speech
+    setPlayingId(id);
+
+    ttsService.speak(sign, {
+      onDone: () => setPlayingId(null),
+      onStopped: () => setPlayingId(null),
+      onError: () => setPlayingId(null)
+    });
   };
 
   const renderItem = ({ item }: { item: any }) => (
@@ -180,12 +204,12 @@ export const HistoryScreen = () => {
             style={styles.actionButton}
           />
           <IconButton
-            icon="play"
+            icon={playingId === item.id ? "stop" : "play"}
             size={24}
             iconColor={theme.colors.primary}
             mode="contained-tonal"
             containerColor={theme.colors.primaryContainer}
-            onPress={() => handlePlaySpeech(item.sign)}
+            onPress={() => handlePlaySpeech(item.id, item.sign)}
             style={styles.actionButton}
           />
         </View>

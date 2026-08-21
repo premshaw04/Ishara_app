@@ -13,26 +13,17 @@ export interface TTSOptions {
 
 export const ttsService = {
   speak: (text: string, options?: TTSOptions) => {
-    // Android TTS often fails silently if invalid options are provided.
-    // We sanitize them here.
-    const speechOptions: any = {
-      language: options?.language || 'en-US',
-      pitch: options?.pitch || 1.0,
-      rate: options?.rate || 1.0,
-    };
-    
-    if (options?.voice) {
-      speechOptions.voice = options.voice;
-    }
-
-    // Wrap in try-catch to catch immediate synchronous errors
+    console.log("🗣️ TTS Service called with text:", text);
     try {
+      const speechOptions: any = {};
+      
+      if (options?.language) speechOptions.language = options.language;
+      if (options?.onDone) speechOptions.onDone = options.onDone;
+      if (options?.onStopped) speechOptions.onStopped = options.onStopped;
+      if (options?.onError) speechOptions.onError = options.onError;
+
       Speech.speak(text, speechOptions);
       
-      // Manually trigger onDone after a short delay since Android sometimes swallows callbacks
-      if (options?.onDone) {
-        setTimeout(options.onDone, 2000);
-      }
     } catch (error) {
       console.error("TTS Direct Error:", error);
       if (options?.onError) options.onError(error as Error);
