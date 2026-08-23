@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { saveCalibrationProfile } from '../../store/slices/settingsSlice';
+import { profileService } from '../../api/services/profileService';
 import { Header, PrimaryButton, OutlinedButton, BaseCard } from '../../components';
 import { themeConstants } from '../../theme/themeConstants';
 import {
@@ -21,7 +22,7 @@ import {
   DEFAULT_CALIBRATION_PROFILE,
 } from '../../utils/calibration';
 
-type CalibrationStep = 'WELCOME' | 'STEP_OPEN' | 'STEP_FIST' | 'STEP_TEST' | 'STEP_COMPLETE';
+type CalibrationStep = 'WELCOME' | 'STEP_IMU' | 'STEP_OPEN' | 'STEP_FIST' | 'STEP_TEST' | 'STEP_COMPLETE';
 
 const { width } = Dimensions.get('window');
 
@@ -35,52 +36,77 @@ export const CalibrationScreen = () => {
   const connectionStatus = useSelector((state: RootState) => state.sensor.status);
   const savedFlexMin = useSelector((state: RootState) => state.settings.flexMin);
   const savedFlexMax = useSelector((state: RootState) => state.settings.flexMax);
+  const savedImuOffsets = useSelector((state: RootState) => state.settings.imuOffsets);
   const isAlreadyCalibrated = useSelector((state: RootState) => state.settings.isCalibrated);
+  const liveImuRaw = useSelector((state: RootState) => state.sensor.imuRaw);
 
   // Local Calibration State
   const [step, setStep] = useState<CalibrationStep>('WELCOME');
   const [countdown, setCountdown] = useState(3);
   const [isCountingDown, setIsCountingDown] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [prepCountdown, setPrepCountdown] = useState(0);
 
   // Buffer to accumulate readings during 3-second sampling window for smooth average
   const openSamplesRef = useRef<number[][]>([]);
   const fistSamplesRef = useRef<number[][]>([]);
+  const imuSamplesRef = useRef<number[][]>([]);
 
   // Captured baselines
-  const [capturedMin, setCapturedMin] = useState<number[]>([...savedFlexMin]);
-  const [capturedMax, setCapturedMax] = useState<number[]>([...savedFlexMax]);
+  const [capturedMin, setCapturedMin] = useState<number[]>([...(savedFlexMin || DEFAULT_CALIBRATION_PROFILE.flexMin)]);
+  const [capturedMax, setCapturedMax] = useState<number[]>([...(savedFlexMax || DEFAULT_CALIBRATION_PROFILE.flexMax)]);
+  const [capturedImu, setCapturedImu] = useState<number[]>([...(savedImuOffsets || DEFAULT_CALIBRATION_PROFILE.imuOffsets)]);
 
   // Demo fallback values if hardware is disconnected
   const [simulatedValues, setSimulatedValues] = useState<number[]>([2800, 2900, 2750, 2850, 2400]);
+  const [simulatedImuValues, setSimulatedImuValues] = useState<number[]>([200, 300, 16000, 10, -5, 12]);
 
   // Current active readings (live from hardware or simulated)
   const isConnected = connectionStatus === 'connected';
   const currentRawFlex = isConnected && liveFlexSensors && liveFlexSensors.length === 5
     ? liveFlexSensors
     : simulatedValues;
+  const currentImuRaw = isConnected && liveImuRaw && liveImuRaw.length === 6
+    ? liveImuRaw
+    : simulatedImuValues;
 
   // Record samples in buffer when sampling is active
   useEffect(() => {
     if (isCountingDown) {
-      if (step === 'STEP_OPEN') {
+      if (step === 'STEP_IMU') {
+        imuSamplesRef.current.push([...currentImuRaw]);
+      } else if (step === 'STEP_OPEN') {
         openSamplesRef.current.push([...currentRawFlex]);
       } else if (step === 'STEP_FIST') {
         fistSamplesRef.current.push([...currentRawFlex]);
       }
     }
-  }, [currentRawFlex, isCountingDown, step]);
+  }, [currentRawFlex, currentImuRaw, isCountingDown, step]);
 
   // Handle countdown timer for sampling
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | null = null;
-    if (isCountingDown && countdown > 0) {
+    
+    if (isPreparing && prepCountdown > 0) {
+      timer = setInterval(() => {
+        setPrepCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (isPreparing && prepCountdown === 0) {
+      setIsPreparing(false);
+      setIsCountingDown(true);
+      setCountdown(3);
+    } else if (isCountingDown && countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
       }, 1000);
     } else if (isCountingDown && countdown === 0) {
       setIsCountingDown(false);
 
-      if (step === 'STEP_OPEN') {
+      if (step === 'STEP_IMU') {
+        const averages = computeAverages(imuSamplesRef.current, currentImuRaw);
+        setCapturedImu(averages);
+        setStep('STEP_OPEN');
+      } else if (step === 'STEP_OPEN') {
         // Compute average of all captured open samples
         const averages = computeAverages(openSamplesRef.current, currentRawFlex);
         setCapturedMin(averages);
@@ -96,42 +122,62 @@ export const CalibrationScreen = () => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isCountingDown, countdown, step, currentRawFlex]);
+  }, [isPreparing, prepCountdown, isCountingDown, countdown, step, currentRawFlex, currentImuRaw]);
 
   const computeAverages = (samples: number[][], fallback: number[]): number[] => {
     if (samples.length === 0) return fallback;
-    const sums = [0, 0, 0, 0, 0];
+    const sums = new Array(fallback.length).fill(0);
     samples.forEach((sample) => {
       sample.forEach((val, idx) => {
-        sums[idx] += val;
+        if (idx < sums.length) {
+          sums[idx] += val;
+        }
       });
     });
     return sums.map((s) => Math.round(s / samples.length));
   };
 
+  const startPrep = (stepName: CalibrationStep) => {
+    setStep(stepName);
+    setPrepCountdown(2);
+    setIsPreparing(true);
+    setIsCountingDown(false);
+  };
+
+  const handleStartImu = () => {
+    imuSamplesRef.current = [];
+    startPrep('STEP_IMU');
+  };
+
   // Start Step 1: Open Hand
   const handleStartOpenHand = () => {
     openSamplesRef.current = [];
-    setCountdown(3);
-    setStep('STEP_OPEN');
-    setIsCountingDown(true);
+    startPrep('STEP_OPEN');
   };
 
   // Start Step 2: Closed Fist
   const handleStartFist = () => {
     fistSamplesRef.current = [];
-    setCountdown(3);
-    setIsCountingDown(true);
+    startPrep('STEP_FIST');
   };
 
   // Save Calibration
-  const handleSave = () => {
+  const handleSave = async () => {
     dispatch(
       saveCalibrationProfile({
         flexMin: capturedMin,
         flexMax: capturedMax,
+        imuOffsets: capturedImu,
       })
     );
+    
+    // Sync with backend ML Server
+    try {
+      await profileService.updateCalibration(capturedMin, capturedMax, capturedImu);
+    } catch (err) {
+      console.warn('Failed to sync calibration with backend:', err);
+    }
+
     setStep('STEP_COMPLETE');
   };
 
@@ -139,6 +185,7 @@ export const CalibrationScreen = () => {
   const handleRestart = () => {
     setCapturedMin([...DEFAULT_CALIBRATION_PROFILE.flexMin]);
     setCapturedMax([...DEFAULT_CALIBRATION_PROFILE.flexMax]);
+    setCapturedImu([...DEFAULT_CALIBRATION_PROFILE.imuOffsets]);
     setStep('WELCOME');
   };
 
@@ -150,8 +197,8 @@ export const CalibrationScreen = () => {
         {/* Step Indicator Header */}
         <View style={styles.stepperContainer}>
           <View style={styles.stepNodesRow}>
-            {['Start', 'Open Hand', 'Fist', 'Test', 'Done'].map((label, idx) => {
-              const stepIndex = ['WELCOME', 'STEP_OPEN', 'STEP_FIST', 'STEP_TEST', 'STEP_COMPLETE'].indexOf(step);
+            {['Start', 'IMU', 'Open', 'Fist', 'Test', 'Done'].map((label, idx) => {
+              const stepIndex = ['WELCOME', 'STEP_IMU', 'STEP_OPEN', 'STEP_FIST', 'STEP_TEST', 'STEP_COMPLETE'].indexOf(step);
               const isActive = idx === stepIndex;
               const isPast = idx < stepIndex;
 
@@ -231,15 +278,19 @@ export const CalibrationScreen = () => {
             <View style={styles.infoBox}>
               <View style={styles.infoRow}>
                 <Ionicons name="checkmark-circle" size={20} color={themeConstants.palette.success} />
-                <Text style={styles.infoText}>Step 1: Record Open Hand Baseline</Text>
+                <Text style={styles.infoText}>Step 1: Record IMU Flat Baseline</Text>
               </View>
               <View style={styles.infoRow}>
                 <Ionicons name="checkmark-circle" size={20} color={themeConstants.palette.success} />
-                <Text style={styles.infoText}>Step 2: Record Closed Fist Baseline</Text>
+                <Text style={styles.infoText}>Step 2: Record Open Hand Baseline</Text>
               </View>
               <View style={styles.infoRow}>
                 <Ionicons name="checkmark-circle" size={20} color={themeConstants.palette.success} />
-                <Text style={styles.infoText}>Step 3: Live Verification & Visual Feedback</Text>
+                <Text style={styles.infoText}>Step 3: Record Closed Fist Baseline</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Ionicons name="checkmark-circle" size={20} color={themeConstants.palette.success} />
+                <Text style={styles.infoText}>Step 4: Live Verification</Text>
               </View>
             </View>
 
@@ -252,9 +303,61 @@ export const CalibrationScreen = () => {
 
             <PrimaryButton
               title="Start Calibration"
-              onPress={handleStartOpenHand}
+              onPress={handleStartImu}
               style={styles.primaryBtn}
             />
+          </View>
+        )}
+
+        {/* ============================================================ */}
+        {/* SCREEN: STEP IMU - FLAT ON DESK */}
+        {/* ============================================================ */}
+        {step === 'STEP_IMU' && (
+          <View style={styles.stepCard}>
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(255, 152, 0, 0.1)' }]}>
+              <MaterialCommunityIcons name="table-furniture" size={54} color="#FF9800" />
+            </View>
+
+            <Text style={[styles.stepTitle, { color: theme.colors.onBackground }]}>
+              Step 1: Glove Flat on Desk
+            </Text>
+            <Text style={[styles.stepDescription, { color: theme.colors.onSurfaceVariant }]}>
+              Place the glove completely flat on a table and DO NOT MOVE IT. This records the zero-point for the accelerometer and gyroscope.
+            </Text>
+
+            {/* Countdown Display */}
+            {isPreparing ? (
+              <View style={styles.countdownContainer}>
+                <Text style={[styles.countdownNumber, { color: '#FF9800' }]}>
+                  {prepCountdown}
+                </Text>
+                <Text style={[styles.countdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Starting in...
+                </Text>
+              </View>
+            ) : isCountingDown ? (
+              <View style={styles.countdownContainer}>
+                <Text style={[styles.countdownNumber, { color: theme.colors.primary }]}>
+                  {countdown}
+                </Text>
+                <Text style={[styles.countdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Sampling IMU data...
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Live IMU Values Preview */}
+            <View style={styles.rawValuesContainer}>
+              <Text style={styles.rawHeader}>Live IMU Readings (Acc/Gyro):</Text>
+              <View style={styles.rawValuesGrid}>
+                {currentImuRaw.map((val, idx) => (
+                  <View key={idx} style={styles.rawBadge}>
+                    <Text style={styles.rawBadgeLabel}>{['AccX','AccY','AccZ','GyrX','GyrY','GyrZ'][idx]}</Text>
+                    <Text style={styles.rawBadgeVal}>{val}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
         )}
 
@@ -268,21 +371,37 @@ export const CalibrationScreen = () => {
             </View>
 
             <Text style={[styles.stepTitle, { color: theme.colors.onBackground }]}>
-              Step 1: Open Hand Flat
+              Step 2: Open Hand Flat
             </Text>
             <Text style={[styles.stepDescription, { color: theme.colors.onSurfaceVariant }]}>
-              Stretch all 5 fingers straight and flat. Keep your hand completely still while we record the baseline.
+              Stretch all 5 fingers straight and flat. Keep your hand completely still and tap capture.
             </Text>
 
-            {/* Countdown Display */}
-            <View style={styles.countdownContainer}>
-              <Text style={[styles.countdownNumber, { color: theme.colors.primary }]}>
-                {countdown}
-              </Text>
-              <Text style={[styles.countdownLabel, { color: theme.colors.onSurfaceVariant }]}>
-                Sampling sensor data...
-              </Text>
-            </View>
+            {isPreparing ? (
+              <View style={styles.countdownContainer}>
+                <Text style={[styles.countdownNumber, { color: '#FF9800' }]}>
+                  {prepCountdown}
+                </Text>
+                <Text style={[styles.countdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Starting in...
+                </Text>
+              </View>
+            ) : isCountingDown ? (
+              <View style={styles.countdownContainer}>
+                <Text style={[styles.countdownNumber, { color: theme.colors.primary }]}>
+                  {countdown}
+                </Text>
+                <Text style={[styles.countdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Sampling sensor data...
+                </Text>
+              </View>
+            ) : (
+              <PrimaryButton
+                title="Hold Open Hand & Capture"
+                onPress={handleStartOpenHand}
+                style={styles.primaryBtn}
+              />
+            )}
 
             {/* Live ADC Values Preview */}
             <View style={styles.rawValuesContainer}>
@@ -309,13 +428,22 @@ export const CalibrationScreen = () => {
             </View>
 
             <Text style={[styles.stepTitle, { color: theme.colors.onBackground }]}>
-              Step 2: Close Into a Fist
+              Step 3: Close Into a Fist
             </Text>
             <Text style={[styles.stepDescription, { color: theme.colors.onSurfaceVariant }]}>
               Curl all 5 fingers tightly into a fist. Hold the position and tap the button below to sample.
             </Text>
 
-            {isCountingDown ? (
+            {isPreparing ? (
+              <View style={styles.countdownContainer}>
+                <Text style={[styles.countdownNumber, { color: '#FF9800' }]}>
+                  {prepCountdown}
+                </Text>
+                <Text style={[styles.countdownLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Starting in...
+                </Text>
+              </View>
+            ) : isCountingDown ? (
               <View style={styles.countdownContainer}>
                 <Text style={[styles.countdownNumber, { color: '#E91E63' }]}>
                   {countdown}
@@ -357,7 +485,7 @@ export const CalibrationScreen = () => {
             </View>
 
             <Text style={[styles.stepTitle, { color: theme.colors.onBackground }]}>
-              Step 3: Test Your Calibration
+              Step 4: Test Your Calibration
             </Text>
             <Text style={[styles.stepDescription, { color: theme.colors.onSurfaceVariant }]}>
               Move your fingers freely! Verify each finger bar moves smoothly from 0% (straight) to 100% (bent).

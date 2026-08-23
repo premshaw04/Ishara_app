@@ -18,6 +18,7 @@ interface SensorState {
   battery: number | null;
   flexSensors: number[];
   orientation: OrientationData | null;
+  imuRaw: number[];
   prediction: PredictionData | null;
   error: string | null;
 }
@@ -27,6 +28,7 @@ const initialState: SensorState = {
   battery: null,
   flexSensors: [0, 0, 0, 0, 0], // Default 5 flex sensors
   orientation: null,
+  imuRaw: [0, 0, 0, 0, 0, 0], // AccX, AccY, AccZ, GyroX, GyroY, GyroZ
   prediction: null,
   error: null,
 };
@@ -43,10 +45,11 @@ const sensorSlice = createSlice({
     },
     setSensorData: (
       state,
-      action: PayloadAction<{ flexSensors: number[]; orientation: OrientationData; battery: number }>
+      action: PayloadAction<{ flexSensors: number[]; orientation: OrientationData; imuRaw: number[]; battery: number }>
     ) => {
       state.flexSensors = action.payload.flexSensors;
       state.orientation = action.payload.orientation;
+      state.imuRaw = action.payload.imuRaw;
       state.battery = action.payload.battery;
     },
     setPrediction: (state, action: PayloadAction<PredictionData>) => {

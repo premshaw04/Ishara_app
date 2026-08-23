@@ -78,7 +78,9 @@ print("Testing Samples  :", len(X_test))
 model = RandomForestClassifier(
     n_estimators=300,
     criterion="gini",
-    max_depth=None,
+    max_depth=10,
+    min_samples_split=10,
+    min_samples_leaf=5,
     random_state=42,
     n_jobs=-1
 )
@@ -121,7 +123,8 @@ disp = ConfusionMatrixDisplay(
 disp.plot(xticks_rotation=45)
 plt.title("Gesture Confusion Matrix")
 plt.tight_layout()
-plt.show()
+# plt.show()
+
 
 # =====================================
 # Feature Importance

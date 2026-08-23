@@ -20,9 +20,8 @@ export const disconnectWebSocket = () => ({ type: WS_DISCONNECT });
 export const startWsRecognition = () => ({ type: WS_START_RECOGNITION });
 export const stopWsRecognition = () => ({ type: WS_STOP_RECOGNITION });
 
-// Placeholder base URL - configure this via environment variables later (.env)
-declare var process: any;
-const WS_BASE_URL = process.env.EXPO_PUBLIC_WS_URL || 'http://10.87.187.36:3000';
+// Force connection to port 5000 (bypassing any Expo Metro .env caching bugs)
+const WS_BASE_URL = 'http://10.87.187.36:5000';
 
 export const websocketMiddleware: Middleware = store => {
   let socket: Socket | null = null;
@@ -52,7 +51,7 @@ export const websocketMiddleware: Middleware = store => {
 
       // Handle ML prediction broadcasted by our Node.js backend
       socket.on('ml_prediction_result', (result) => {
-        if (result && result.prediction && result.confidence >= 75.0 ) {
+        if (result && result.prediction) {
           store.dispatch(setPrediction({
             sign: result.prediction || 'UNKNOWN',
             confidence: Math.round(result.confidence ?? 0)
@@ -65,6 +64,7 @@ export const websocketMiddleware: Middleware = store => {
         store.dispatch(setSensorData({
           flexSensors: data.payload?.flexSensors || [0,0,0,0,0],
           orientation: data.payload?.orientation || { pitch: 0, roll: 0, yaw: 0 },
+          imuRaw: data.payload?.imuRaw || [0,0,0,0,0,0],
           battery: data.payload?.battery || null,
         }));
       });

@@ -7,6 +7,7 @@ export interface CalibrationProfile {
   lastCalibratedAt: string | null;
   flexMin: number[]; // Flat hand / extended fingers (5 elements)
   flexMax: number[]; // Closed fist / bent fingers (5 elements)
+  imuOffsets: number[]; // Flat on desk resting state (AccX, AccY, AccZ, GyroX, GyroY, GyroZ)
 }
 
 export const DEFAULT_CALIBRATION_PROFILE: CalibrationProfile = {
@@ -14,6 +15,7 @@ export const DEFAULT_CALIBRATION_PROFILE: CalibrationProfile = {
   lastCalibratedAt: null,
   flexMin: [3000, 3000, 3000, 3000, 3000],
   flexMax: [1000, 1000, 1000, 1000, 1000],
+  imuOffsets: [0, 0, 0, 0, 0, 0],
 };
 
 export const FINGER_NAMES = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'] as const;

@@ -178,10 +178,68 @@ const uploadProfilePicture = async (req, res) => {
   }
 };
 
+// @desc    Update calibration profile and sync with ML backend
+// @route   POST /api/v1/profile/calibration
+// @access  Private
+const updateCalibration = async (req, res) => {
+  try {
+    const { flexMin, flexMax, imuOffsets } = req.body;
+    
+    if (!flexMin || !flexMax || flexMin.length !== 5 || flexMax.length !== 5) {
+      return res.status(400).json({ message: 'Invalid calibration data. Expected flexMin and flexMax arrays of length 5.' });
+    }
+
+    // 1. Sync with FastAPI ML Server
+    try {
+      const mlPayload = {
+        flex_min: flexMin,
+        flex_max: flexMax
+      };
+      if (imuOffsets && imuOffsets.length === 6) {
+        mlPayload.imu_offsets = imuOffsets;
+      }
+
+      const mlResponse = await fetch('http://127.0.0.1:8000/calibrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(mlPayload)
+      });
+      
+      if (!mlResponse.ok) {
+        console.warn('Warning: FastAPI ML server rejected calibration update:', await mlResponse.text());
+      }
+    } catch (err) {
+      console.warn('Warning: Could not reach FastAPI ML server to sync calibration:', err.message);
+    }
+
+    // 2. Save to User Settings in Database
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.settings = {
+        ...user.settings?.toObject(),
+        calibration: {
+          flexMin,
+          flexMax,
+          imuOffsets: imuOffsets || [0,0,0,0,0,0],
+          lastCalibrated: new Date().toISOString()
+        }
+      };
+      await user.save();
+    }
+
+    res.json({ message: 'Calibration updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   getSettings,
   updateSettings,
   uploadProfilePicture,
+  updateCalibration,
 };

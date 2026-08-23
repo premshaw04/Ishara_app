@@ -1,110 +1,68 @@
-# Routing Architecture (Next.js App Router)
+# Routing Architecture
 
-**Product Name:** CrowdShield AI  
-**Framework:** Next.js (App Router)
+**Product Name:** Ishara  
+**Frameworks:** React Navigation (Mobile), Express.js / WebSockets (Backend), FastAPI (ML)
 
-This document maps out the exact route structure for the application, specifying both the pages (URLs) and where layouts are applied to persist UI elements (like sidebars and topbars) across navigations. No implementation code is included.
+This document maps out the internal routing for the mobile application and the API endpoints that connect the ESP32 hardware to the backend and machine learning services.
 
 ---
 
-## Root Architecture
+## 1. Mobile App Navigation (React Native)
 
-The `src/app/` directory utilizes Route Groups (folders in parentheses) to organize sections of the application without affecting the URL path.
+The mobile application utilizes a standard stack and tab navigation structure (e.g., via React Navigation or Expo Router) to manage the user interfaces.
+
+### Navigation Tree
 
 ```text
-src/app/
-├── layout.tsx                     # Root Layout (applies to EVERYTHING: HTML, Body, Providers)
-├── page.tsx                       # Root Page (Redirects to /login or /dashboard based on auth state)
-│
-├── (auth)/                        # Authentication Route Group
-│   ├── layout.tsx                 # Auth Layout (Minimal layout, centered card, no sidebar)
-│   ├── login/
-│   │   └── page.tsx               # Route: /login
-│   └── forgot-password/
-│       └── page.tsx               # Route: /forgot-password
-│
-└── (dashboard)/                   # Dashboard Route Group
-    ├── layout.tsx                 # Dashboard Layout (Contains main Sidebar and Topbar)
-    └── dashboard/
-        ├── page.tsx               # Route: /dashboard (Main Overview)
-        │
-        ├── live-monitoring/
-        │   └── page.tsx           # Route: /dashboard/live-monitoring
-        │
-        ├── heatmap/
-        │   └── page.tsx           # Route: /dashboard/heatmap
-        │
-        ├── digital-twin/
-        │   └── page.tsx           # Route: /dashboard/digital-twin (3D View)
-        │
-        ├── simulation/
-        │   └── page.tsx           # Route: /dashboard/simulation
-        │
-        ├── security-deployment/
-        │   └── page.tsx           # Route: /dashboard/security-deployment (Personnel Map)
-        │
-        ├── gate-control/
-        │   └── page.tsx           # Route: /dashboard/gate-control
-        │
-        ├── iot-sensors/
-        │   └── page.tsx           # Route: /dashboard/iot-sensors
-        │
-        ├── alerts/
-        │   ├── page.tsx           # Route: /dashboard/alerts (List of all alerts)
-        │   └── [id]/
-        │       └── page.tsx       # Route: /dashboard/alerts/[id] (Dynamic route for alert details)
-        │
-        ├── incident-management/
-        │   ├── page.tsx           # Route: /dashboard/incident-management
-        │   └── [id]/
-        │       └── page.tsx       # Route: /dashboard/incident-management/[id]
-        │
-        ├── reports/
-        │   └── page.tsx           # Route: /dashboard/reports
-        │
-        ├── users/
-        │   ├── page.tsx           # Route: /dashboard/users (User Management & Roles)
-        │   └── [id]/
-        │       └── page.tsx       # Route: /dashboard/users/[id] (User Profile/Edit)
-        │
-        └── settings/
-            ├── layout.tsx         # Settings Layout (Secondary sidebar for settings navigation)
-            ├── page.tsx           # Route: /dashboard/settings (General Settings redirect)
-            ├── general/
-            │   └── page.tsx       # Route: /dashboard/settings/general
-            ├── notifications/
-            │   └── page.tsx       # Route: /dashboard/settings/notifications
-            └── system/
-                └── page.tsx       # Route: /dashboard/settings/system
+RootStack/
+├── Splash (Loads hardware connection status)
+├── Auth/ (AuthNavigator)
+│   ├── Login
+│   └── Register
+├── Main/ (MainTabNavigator - Bottom Tabs)
+│   ├── TranslationTab (Default Route)
+│   ├── CalibrationTab
+│   └── SettingsTab
+└── Fullscreen Screens/ (Hide bottom tab bar)
+    ├── RecognizingScreen
+    ├── TranslationScreen
+    ├── SignDetailScreen
+    ├── CategoryDetailScreen
+    ├── GloveSettingsScreen
+    ├── CalibrationScreen
+    ├── AboutScreen
+    └── EditProfileScreen
 ```
 
 ---
 
-## Layout Hierarchy
+## 2. API & WebSocket Architecture
 
-### 1. Root Layout (`app/layout.tsx`)
-- **Scope:** Wraps every page in the application.
-- **Responsibilities:** 
-  - `<html>` and `<body>` tags.
-  - Global Context Providers (ThemeContext, AuthProvider, StoreProvider).
-  - Global CSS imports.
-  - Metadata definition.
+The Ishara backend infrastructure relies heavily on WebSockets for low-latency streaming, supported by REST APIs for configuration and state management.
 
-### 2. Auth Layout (`app/(auth)/layout.tsx`)
-- **Scope:** Wraps `/login` and `/forgot-password`.
-- **Responsibilities:** 
-  - Minimalistic UI container.
-  - Dark background with subtle CrowdShield branding.
-  - Centered content container.
+### 2.1. Node.js Backend Server (Port: 3000)
 
-### 3. Dashboard Layout (`app/(dashboard)/layout.tsx`)
-- **Scope:** Wraps all routes starting with `/dashboard`.
-- **Responsibilities:** 
-  - **Sidebar Navigation:** The primary navigation menu containing links to all modules (Live Monitoring, Heatmap, etc.).
-  - **Topbar (Header):** Contains the global search, notifications bell, user profile dropdown, and current view title.
-  - **Main Content Area:** The scrolling area where the child pages (`page.tsx`) are rendered.
+**WebSocket Routes (Socket.io):**
+- **Namespace:** `/` (Root)
+- **Events:**
+  - `connection` / `disconnect`
+  - Custom events managed via `registerEsp32Handlers`
+- **Function:** Ingests raw data from the ESP32 hardware and forwards it to the ML Service, then broadcasts predictions to the React Native Mobile App in real-time.
 
-### 4. Settings Layout (`app/(dashboard)/dashboard/settings/layout.tsx`)
-- **Scope:** Wraps all nested routes under `/dashboard/settings`.
-- **Responsibilities:** 
-  - Injects a secondary vertical or horizontal tab menu specifically for navigating between settings categories (General, Notifications, System).
+**REST Routes:**
+- `/auth/*` - Authentication and user management endpoints.
+- `/profile/*` - Fetches and updates current user settings and calibration profiles.
+- `/history/*` - Manages translation history and saved phrases.
+
+### 2.2. Python ML FastAPI Server (Port: 8000)
+
+**REST Routes:**
+- `POST /predict`
+  - **Client:** Node.js Backend.
+  - **Payload:** Normalized sensor data array.
+  - **Function:** Passes the data through the trained ML model (`prediction.py`) and returns the predicted gesture class and confidence probability.
+  
+- `POST /calibrate`
+  - **Client:** Node.js Backend.
+  - **Payload:** Raw calibration data.
+  - **Function:** Updates the in-memory calibration baselines to normalize future prediction requests dynamically.

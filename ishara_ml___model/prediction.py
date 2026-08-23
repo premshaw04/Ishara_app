@@ -3,6 +3,18 @@ import joblib
 import uvicorn
 import pandas as pd
 import numpy as np
+import json
+import datetime
+import sys
+import asyncio
+
+# Fix Windows asyncio [WinError 64] crash with Uvicorn
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# Fix Windows console UTF-8 rendering for emojis
+sys.stdout.reconfigure(encoding='utf-8')
+
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -46,28 +58,46 @@ try:
 except Exception as e:
     print(f"❌ Error loading models: {e}")
 
+# Load calibration profile
+CALIBRATION_FILE = os.path.join(os.path.dirname(__file__), "calibration_profile.json")
+calibration_profile = None
+if os.path.exists(CALIBRATION_FILE):
+    try:
+        with open(CALIBRATION_FILE, "r") as f:
+            calibration_profile = json.load(f)
+        print("✅ Loaded calibration profile for incoming data normalization.")
+    except Exception as e:
+        print(f"⚠️ Warning: Failed to load calibration profile: {e}")
+else:
+    print("⚠️ Warning: No calibration profile found. Predictions will run on raw data!")
+
 # =====================================
 # Pydantic Schemas for Input Validation
 # =====================================
 
+class CalibrationInput(BaseModel):
+    flex_min: List[float] = Field(..., description="Minimum flex sensor values (open hand)")
+    flex_max: List[float] = Field(..., description="Maximum flex sensor values (closed fist)")
+    imu_offsets: Optional[List[float]] = Field(None, description="IMU offsets for AccX, AccY, AccZ, GyroX, GyroY, GyroZ")
+
 class SensorInput(BaseModel):
-    Thumb: Union[float, int] = Field(..., example=240, description="Thumb flex sensor ADC reading")
-    Index: Union[float, int] = Field(..., example=17, description="Index flex sensor ADC reading")
-    Middle: Union[float, int] = Field(..., example=0, description="Middle flex sensor ADC reading")
-    Ring: Union[float, int] = Field(..., example=975, description="Ring flex sensor ADC reading")
-    Pinky: Union[float, int] = Field(..., example=2514, description="Pinky flex sensor ADC reading")
-    AccX: Union[float, int] = Field(..., example=-3492, description="MPU6050 Accelerometer X")
-    AccY: Union[float, int] = Field(..., example=16228, description="MPU6050 Accelerometer Y")
-    AccZ: Union[float, int] = Field(..., example=5816, description="MPU6050 Accelerometer Z")
-    GyroX: Union[float, int] = Field(..., example=-762, description="MPU6050 Gyroscope X")
-    GyroY: Union[float, int] = Field(..., example=-19, description="MPU6050 Gyroscope Y")
-    GyroZ: Union[float, int] = Field(..., example=2200, description="MPU6050 Gyroscope Z")
+    Thumb: Union[float, int] = Field(..., json_schema_extra={"example": 240}, description="Thumb flex sensor ADC reading")
+    Index: Union[float, int] = Field(..., json_schema_extra={"example": 17}, description="Index flex sensor ADC reading")
+    Middle: Union[float, int] = Field(..., json_schema_extra={"example": 0}, description="Middle flex sensor ADC reading")
+    Ring: Union[float, int] = Field(..., json_schema_extra={"example": 975}, description="Ring flex sensor ADC reading")
+    Pinky: Union[float, int] = Field(..., json_schema_extra={"example": 2514}, description="Pinky flex sensor ADC reading")
+    AccX: Union[float, int] = Field(..., json_schema_extra={"example": -3492}, description="MPU6050 Accelerometer X")
+    AccY: Union[float, int] = Field(..., json_schema_extra={"example": 16228}, description="MPU6050 Accelerometer Y")
+    AccZ: Union[float, int] = Field(..., json_schema_extra={"example": 5816}, description="MPU6050 Accelerometer Z")
+    GyroX: Union[float, int] = Field(..., json_schema_extra={"example": -762}, description="MPU6050 Gyroscope X")
+    GyroY: Union[float, int] = Field(..., json_schema_extra={"example": -19}, description="MPU6050 Gyroscope Y")
+    GyroZ: Union[float, int] = Field(..., json_schema_extra={"example": 2200}, description="MPU6050 Gyroscope Z")
 
 class RawArrayInput(BaseModel):
-    values: List[Union[float, int]] = Field(..., example=[240, 17, 0, 975, 2514, -3492, 16228, 5816, -762, -19, 2200])
+    values: List[Union[float, int]] = Field(..., json_schema_extra={"example": [240, 17, 0, 975, 2514, -3492, 16228, 5816, -762, -19, 2200]})
 
 class RawStringInput(BaseModel):
-    data: str = Field(..., example="240,17,0,975,2514,-3492,16228,5816,-762,-19,2200", description="Comma-separated string of 11 sensor integers directly from ESP32")
+    data: str = Field(..., json_schema_extra={"example": "240,17,0,975,2514,-3492,16228,5816,-762,-19,2200"}, description="Comma-separated string of 11 sensor integers directly from ESP32")
 
 class PredictionResponse(BaseModel):
     status: str
@@ -79,6 +109,38 @@ class PredictionResponse(BaseModel):
 # Helper Function for Inference
 # =====================================
 
+def normalize_sample(raw_values, profile):
+    """Normalize flex sensors to 0.0-1.0 percentages and center IMU values using calibration profile."""
+    if not profile:
+        return raw_values # Pass through if no profile
+        
+    flex_min = profile.get("flex_min", [3000.0] * 5)
+    flex_max = profile.get("flex_max", [1000.0] * 5)
+    imu_offsets = profile.get("imu_offsets", [0.0] * 6)
+    
+    normalized = []
+    
+    # 1. Flex Sensors (0-4)
+    for i in range(5):
+        raw = raw_values[i]
+        c_min = flex_min[i]
+        c_max = flex_max[i]
+        if c_min == c_max:
+            val = 0.0
+        else:
+            val = (raw - c_min) / (c_max - c_min)
+        val = max(0.0, min(1.0, val)) # Constrain to [0.0, 1.0]
+        normalized.append(round(val, 4))
+        
+    # 2. IMU Sensors (5-10)
+    for i in range(6):
+        raw = raw_values[5 + i]
+        offset = imu_offsets[i]
+        val = raw - offset
+        normalized.append(round(val, 2))
+        
+    return normalized
+
 def perform_prediction(sensor_values: list) -> dict:
     if model is None or label_encoder is None:
         raise HTTPException(status_code=503, detail="ML model is not loaded on server. Please verify 'gesture_model.pkl' and 'label_encoder.pkl' exist in models directory.")
@@ -86,8 +148,11 @@ def perform_prediction(sensor_values: list) -> dict:
     if len(sensor_values) != 11:
         raise HTTPException(status_code=400, detail=f"Expected exactly 11 sensor readings, but received {len(sensor_values)}.")
 
+    # Normalize the incoming raw data
+    normalized_values = normalize_sample(sensor_values, calibration_profile)
+
     # Format input into DataFrame with appropriate feature columns to prevent scikit-learn warnings
-    df_input = pd.DataFrame([sensor_values], columns=feature_names)
+    df_input = pd.DataFrame([normalized_values], columns=feature_names)
     
     # Run predictions
     pred_idx = model.predict(df_input)[0]
@@ -145,6 +210,50 @@ async def predict_gesture_structured(data: SensorInput):
 async def predict_gesture_array(data: RawArrayInput):
     """Predict sign gesture from a clean JSON integer list of 11 sensor values."""
     return perform_prediction(data.values)
+
+@app.post("/predict-string", response_model=PredictionResponse)
+async def predict_string(input_data: RawStringInput):
+    """
+    Receives a single comma-separated string from the ESP32.
+    """
+    try:
+        parts = [float(x.strip()) for x in input_data.data.split(',') if x.strip()]
+        return perform_prediction(parts)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/calibrate")
+async def update_calibration(input_data: CalibrationInput):
+    """
+    Updates the active calibration profile (flex limits) and saves it to disk.
+    This allows the mobile app to sync its calibration with the ML server.
+    """
+    global calibration_profile
+    import datetime
+    
+    # Initialize if none exists
+    if calibration_profile is None:
+        calibration_profile = {
+            "flex_min": [3000.0] * 5,
+            "flex_max": [1000.0] * 5,
+            "imu_offsets": [0.0] * 6
+        }
+        
+    # Update flex values
+    calibration_profile["flex_min"] = input_data.flex_min
+    calibration_profile["flex_max"] = input_data.flex_max
+    if input_data.imu_offsets is not None:
+        calibration_profile["imu_offsets"] = input_data.imu_offsets
+    calibration_profile["calibrated_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Save to disk
+    try:
+        with open(CALIBRATION_FILE, "w") as f:
+            json.dump(calibration_profile, f, indent=4)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save profile to disk: {e}")
+        
+    return {"status": "success", "message": "Calibration updated successfully", "profile": calibration_profile}
 
 @app.post("/predict-raw", response_model=PredictionResponse, tags=["Prediction"])
 async def predict_gesture_raw_string(data: RawStringInput):

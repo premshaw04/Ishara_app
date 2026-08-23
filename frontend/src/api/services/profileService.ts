@@ -22,6 +22,12 @@ export const profileService = {
     return response.data;
   },
 
+  updateCalibration: async (flexMin: number[], flexMax: number[], imuOffsets?: number[]) => {
+    const payload = { flexMin, flexMax, ...(imuOffsets ? { imuOffsets } : {}) };
+    const response = await apiClient.post('/profile/calibration', payload);
+    return response.data;
+  },
+
   uploadProfilePicture: async (imageUri: string) => {
     const formData = new FormData();
     const filename = imageUri.split('/').pop() || 'profile.jpg';

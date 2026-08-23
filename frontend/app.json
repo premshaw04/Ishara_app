@@ -9,8 +9,13 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.anonymous.ishara"
     },
-    "web": {
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "b0bb5395-f24c-499e-81c6-fc672a0d4e5e"
+      }
     }
   }
 }

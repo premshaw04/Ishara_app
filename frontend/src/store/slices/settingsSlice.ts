@@ -13,6 +13,7 @@ export interface SettingsState {
   lastCalibratedAt: string | null;
   flexMin: number[];
   flexMax: number[];
+  imuOffsets: number[];
   isHydrating: boolean;
 }
 
@@ -26,6 +27,7 @@ const initialState: SettingsState = {
   lastCalibratedAt: DEFAULT_CALIBRATION_PROFILE.lastCalibratedAt,
   flexMin: DEFAULT_CALIBRATION_PROFILE.flexMin,
   flexMax: DEFAULT_CALIBRATION_PROFILE.flexMax,
+  imuOffsets: DEFAULT_CALIBRATION_PROFILE.imuOffsets,
   isHydrating: true,
 };
 
@@ -57,6 +59,7 @@ export const hydrateSettings = createAsyncThunk('settings/hydrate', async () => 
     lastCalibratedAt: calibration.lastCalibratedAt ?? null,
     flexMin: calibration.flexMin ?? DEFAULT_CALIBRATION_PROFILE.flexMin,
     flexMax: calibration.flexMax ?? DEFAULT_CALIBRATION_PROFILE.flexMax,
+    imuOffsets: calibration.imuOffsets ?? DEFAULT_CALIBRATION_PROFILE.imuOffsets,
   };
 });
 
@@ -88,10 +91,11 @@ const settingsSlice = createSlice({
     },
     saveCalibrationProfile: (
       state,
-      action: PayloadAction<{ flexMin: number[]; flexMax: number[] }>
+      action: PayloadAction<{ flexMin: number[]; flexMax: number[]; imuOffsets: number[] }>
     ) => {
       state.flexMin = action.payload.flexMin;
       state.flexMax = action.payload.flexMax;
+      state.imuOffsets = action.payload.imuOffsets;
       state.isCalibrated = true;
       state.lastCalibratedAt = new Date().toISOString();
 
@@ -100,6 +104,7 @@ const settingsSlice = createSlice({
         lastCalibratedAt: state.lastCalibratedAt,
         flexMin: state.flexMin,
         flexMax: state.flexMax,
+        imuOffsets: state.imuOffsets,
       };
       AsyncStorage.setItem('gloveCalibration', JSON.stringify(profile));
     },
@@ -108,6 +113,7 @@ const settingsSlice = createSlice({
       state.lastCalibratedAt = null;
       state.flexMin = DEFAULT_CALIBRATION_PROFILE.flexMin;
       state.flexMax = DEFAULT_CALIBRATION_PROFILE.flexMax;
+      state.imuOffsets = DEFAULT_CALIBRATION_PROFILE.imuOffsets;
       AsyncStorage.removeItem('gloveCalibration');
     },
   },
@@ -122,6 +128,7 @@ const settingsSlice = createSlice({
       state.lastCalibratedAt = action.payload.lastCalibratedAt;
       state.flexMin = action.payload.flexMin;
       state.flexMax = action.payload.flexMax;
+      state.imuOffsets = action.payload.imuOffsets;
       state.isHydrating = false;
     });
   }

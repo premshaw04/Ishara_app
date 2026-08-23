@@ -10,13 +10,13 @@ function setupSockets(httpServer) {
   });
 
   io.on('connection', (socket) => {
-    console.log('A client connected:', socket.id);
+    console.log('🔗 A client connected:', socket.id);
 
     // Register handlers for ESP32 events
     registerEsp32Handlers(io, socket);
 
     socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
+      console.log('❌ Client disconnected:', socket.id);
     });
   });
 }

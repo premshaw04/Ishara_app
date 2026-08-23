@@ -1,12 +1,22 @@
 let isOffline = false;
 let lastErrorLogTime = 0;
+let lastRequestTime = 0;
+let lastPrediction = { prediction: "WAITING...", confidence: 0 };
 
 async function sendToMLModel(data) {
   try {
     const mlUrl = process.env.ML_MODEL_URL || 'http://127.0.0.1:8000/predict-array';
 
-    // If currently marked offline, wait before attempting another network request (3-second cooldown)
     const now = Date.now();
+    
+    // THROTTLE: Only send a request to ML model maximum 5 times a second (every 200ms)
+    // to prevent Windows HTTP Port Exhaustion (WinError 64 / DDoS'ing the Python server)
+    if (now - lastRequestTime < 200) {
+      return lastPrediction;
+    }
+    lastRequestTime = now;
+
+    // If currently marked offline, wait before attempting another network request (3-second cooldown)
     if (isOffline && (now - lastErrorLogTime < 3000)) {
       return { prediction: "ML Offline", confidence: 0 };
     }
@@ -49,7 +59,9 @@ async function sendToMLModel(data) {
       isOffline = false;
     }
 
-    return await response.json();
+    const result = await response.json();
+    lastPrediction = result;
+    return result;
   } catch (error) {
     const now = Date.now();
     const isConnRefused = error?.cause?.code === 'ECONNREFUSED' || error?.message?.includes('ECONNREFUSED') || error?.code === 'ECONNREFUSED';

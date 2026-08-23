@@ -6,8 +6,8 @@ import { logout } from '../store/slices/authSlice';
 declare var process: any;
 
 
-// Placeholder base URL - configure this via environment variables later (.env)
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.ishara.com/v1';
+// Force connection to port 5000 (bypassing any Expo Metro .env caching bugs)
+export const BASE_URL = 'http://10.87.187.36:5000';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

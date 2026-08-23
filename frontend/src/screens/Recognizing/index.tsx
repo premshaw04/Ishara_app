@@ -105,10 +105,10 @@ export const RecognizingScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-speak and Save to History when a new prediction arrives
+  // Auto-speak and Save to History when a new prediction arrives (and confidence > 75%)
   useEffect(() => {
     if (isRecognizing && prediction && prediction.sign && prediction.sign !== 'WAITING...') {
-      if (prediction.sign !== lastSpokenSign) {
+      if (prediction.confidence > 75 && prediction.sign !== lastSpokenSign) {
         setLastSpokenSign(prediction.sign);
         ttsService.stop(); // cancel previous speech
         ttsService.speak(prediction.sign);
@@ -116,7 +116,7 @@ export const RecognizingScreen = () => {
         // Save to History
         historyService.addHistoryLog({
           sign: prediction.sign,
-          confidence: prediction.confidence || 90
+          confidence: prediction.confidence
         }).catch(err => console.error("Failed to save history:", err));
       }
     }

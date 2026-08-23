@@ -1,64 +1,37 @@
 # Product Requirement Document (PRD)
 
-**Product Name:** CrowdShield AI  
+**Product Name:** Ishara  
 **Version:** 1.0  
-**Tagline:** AI-Powered Predictive Crowd Intelligence & Emergency Response Platform  
+**Tagline:** Real-Time Sign Language & Gesture Translation System
 
 ## 1. Project Overview
 
 ### Vision Statement
-CrowdShield AI aims to transform crowd management from reactive monitoring to predictive public safety by leveraging Artificial Intelligence, Computer Vision, IoT, Digital Twin technology, and real-time analytics. Instead of waiting for dangerous crowd conditions to occur, the platform continuously analyzes crowd behavior, predicts potential risks, and recommends proactive interventions to authorities, helping prevent incidents before they escalate. This vision aligns with the TechNova problem statement's emphasis on predictive public safety.
+Ishara aims to bridge the communication gap between individuals with speech or hearing impairments and the general public by translating hand gestures into spoken language in real-time. By utilizing low-cost IoT hardware and advanced Machine Learning models, Ishara provides an accessible and scalable solution for seamless communication.
 
 ### Mission
-To provide an affordable, scalable, AI-powered platform that enables authorities to monitor, predict, and manage crowd movement in real time while keeping citizens informed through intelligent alerts and navigation. This reflects the challenge's focus on low-cost, scalable, mobile-and-cloud deployment.
+To provide an affordable, highly accurate, and portable hardware-software system that empowers users to communicate effortlessly using natural hand gestures. 
 
 ### Problem Statement
-Large public gatherings such as malls, festivals, temples, concerts, stadiums, railway stations, and airports often experience dangerous crowd congestion. Traditional crowd monitoring relies heavily on CCTV operators manually observing screens.
-
-This creates several problems:
-- Delayed detection of dangerous situations
-- Human error
-- Slow emergency response
-- Lack of predictive intelligence
-- Poor crowd redistribution
-- Increased stampede risk
-
-Current systems react after congestion becomes dangerous rather than preventing it.
+Individuals relying on sign language or specific gestures often face significant communication barriers with those who do not understand these languages. Traditional translators are expensive, and many existing technological solutions are bulky, slow, or lack real-time conversational capabilities.
 
 ### Our Solution
-CrowdShield AI provides a unified platform consisting of:
-- AI-powered Computer Vision
-- IoT Sensor Integration
-- Citizen Mobile Application
-- Authority Web Dashboard
-- Predictive AI Engine
-- Recommendation Engine
-- Digital Twin
-- Crowd Simulation
-- Multilingual Emergency Broadcast
-
-The system continuously monitors crowd movement, predicts risks several minutes in advance, and recommends the best response to authorities.
+Ishara provides a complete end-to-end platform consisting of:
+- **IoT Hardware (ESP32):** A wearable glove equipped with flex sensors and IMUs (e.g., MPU6050) to capture precise hand movements and orientations.
+- **Node.js Backend:** A high-speed WebSocket server that receives hardware data and routes it instantly.
+- **Python ML Inference Server (FastAPI):** A dedicated machine learning service that processes raw sensor data and predicts the corresponding gesture with high accuracy.
+- **React Native Mobile App:** A user-friendly, TypeScript-based mobile interface that displays translated text, features an "Auto-Speak" text-to-speech function, and includes a robust calibration wizard.
 
 ---
 
 ## 2. Product Goals
 
 ### Primary Goals
-- Prevent stampedes
-- Detect congestion
-- Predict crowd risk
-- Improve emergency response
-- Reduce false alarms
-- Improve situational awareness
-- Optimize security deployment
-- Provide safer navigation for citizens
-
-### Secondary Goals
-- Reduce monitoring workload
-- Generate automated reports
-- Improve post-event analysis
-- Build historical crowd intelligence
-- Learn from previous events
+- Translate hand gestures to text and speech in real-time.
+- Ensure lag-free data transmission between hardware and mobile app via WebSockets.
+- Maintain a high prediction accuracy (target >90%).
+- Provide a reliable, user-friendly calibration process for different hand sizes.
+- Prevent false positives by limiting the Auto-Speak translation feature to a >70% confidence threshold.
 
 ---
 
@@ -66,262 +39,68 @@ The system continuously monitors crowd movement, predicts risks several minutes 
 
 | KPI | Target |
 |---|---|
-| Crowd Detection Accuracy | >95% |
-| Risk Prediction Accuracy | >90% |
-| False Alarm Rate | <5% |
-| Alert Latency | <2 seconds |
-| Dashboard Load Time | <2 seconds |
-| Camera Processing | 30 FPS |
-| WebSocket Delay | <500 ms |
-| AI Recommendation Response | <5 seconds |
+| Gesture Recognition Accuracy | >90% |
+| Sensor Data Latency (ESP32 -> Node) | <50 ms |
+| Total Translation Latency (End-to-End) | <200 ms |
+| Auto-Speak Confidence Threshold | >70% |
+| Mobile App Crash Rate | <1% |
 
 ---
 
-## 4. Target Industries
-- Shopping Malls
-- Airports
-- Railway Stations
-- Metro Stations
-- Stadiums
-- Religious Gatherings
-- Concert Venues
-- Government Events
-- Political Rallies
-- Smart Cities
-- Theme Parks
-- Exhibition Centers
+## 4. Target Audience
+- Individuals with speech or hearing impairments.
+- Relatives, friends, and colleagues of impaired individuals.
+- Medical rehabilitation centers.
+- Special education institutions.
 
 ---
 
-## 5. Stakeholders
-
-### Internal
-- Development Team
-- AI Team
-- UI/UX Team
-- Project Manager
-- QA Team
-
-### External
-- Police Department
-- Mall Management
-- Security Agencies
-- District Administration
-- Disaster Management Authority
-- Event Organizers
-- Citizens
-
----
-
-## 6. Product Scope
+## 5. Product Scope (MVP)
 
 ### Included in MVP
 
-#### Authority Dashboard
-- Login
-- Dashboard Overview
-- Live Monitoring
-- Crowd Heatmap
-- AI Prediction
-- AI Recommendation
-- Alerts
-- Gate Control
-- Incident Management
-- Reports
-- Analytics
-- Settings
+#### Hardware (ESP32)
+- Sensor data acquisition (Flex sensors + Accelerometer/Gyroscope).
+- Real-time Wi-Fi/WebSocket data transmission to backend.
 
-#### Citizen Mobile App
-- Login
-- Home
-- Crowd Status
-- Safe Route
-- Alerts
-- SOS
-- Incident Reporting
+#### Mobile Application (React Native / TypeScript)
+- Bluetooth/Wi-Fi connection status.
+- Real-time translation display (Text).
+- Auto-Speak (Text-to-Speech) functionality (triggered at >70% confidence).
+- Hardware Calibration Wizard.
 
-#### AI Backend
-- Person Detection
-- Tracking
-- Density Estimation
-- Speed Estimation
-- Direction Analysis
-- Congestion Detection
-- Risk Prediction
-- Recommendation Engine
+#### Backend / Infrastructure
+- Node.js server with Socket.io and modular Express REST APIs (/auth, /profile, /history).
+- Python FastAPI ML Inference service running on port 8000.
+- Machine Learning model trained on custom `gestures_dataset.csv`.
+- `calibration_profile.json` management.
 
 ### Out of Scope (MVP)
-*These are planned for future versions:*
-- Drone Integration
-- Facial Recognition
-- Wearable Devices
-- Satellite Monitoring
-- AR Navigation
-- Smart Glass Support
+- Two-way translation (Speech to Sign Language avatar).
+- Multi-language translation (MVP supports English primarily).
+- Integration with smartwatches.
 
 ---
 
-## 7. User Personas
+## 6. Functional Requirements
 
-### Persona 1 — Mall Operations Manager
-- **Name:** Rahul Sharma
-- **Age:** 38
-- **Responsibilities:** Monitor visitor flow, Ensure safety, Coordinate security, Respond to incidents
-- **Goals:** Prevent overcrowding, Reduce waiting time, Improve visitor experience, Minimize emergency situations
-- **Pain Points:** Too many CCTV screens, No predictive alerts, Slow communication, Limited manpower
+### Data Acquisition & Processing
+- The ESP32 must sample sensor data at a consistent frequency and transmit it over WebSockets.
+- The Python ML Server must expose an endpoint or socket connection to receive data, process it, and return a predicted class and confidence score.
 
-### Persona 2 — Security Supervisor
-- **Name:** Anita Verma
-- **Age:** 34
-- **Responsibilities:** Manage guards, Coordinate emergency response, Patrol high-risk zones
-- **Goals:** Receive instant alerts, Deploy guards efficiently, Reduce response time
+### Mobile Application
+- **Calibration Wizard:** Must guide the user through capturing baseline sensor readings for flat-hand and closed-fist positions.
+- **Translation View:** Must clearly display the translated word/phrase.
+- **Audio Output:** The app must utilize the device's native TTS engine to speak the translated text if the confidence threshold is met.
 
-### Persona 3 — Citizen
-- **Name:** Rohit Singh
-- **Age:** 27
-- **Goals:** Shop safely, Avoid crowded areas, Find nearest exit, Receive alerts
-- **Pain Points:** Doesn't know congestion levels, Gets stuck in queues, Cannot find safest route
+### Backend Communication
+- The Node.js server must handle multiple concurrent connections via Socket.io (Hardware + Mobile App) and route data efficiently without blocking the event loop.
 
 ---
 
-## 8. User Journey
-
-### Authority Journey
-`Login` → `Dashboard` → `Live Monitoring` → `AI detects congestion` → `Risk Prediction` → `Recommendation` → `Approve Action` → `Announcement` → `Security Deployment` → `Incident Resolved`
-
-### Citizen Journey
-`Open App` → `View Crowd Status` → `Navigate` → `Receive Alert` → `Use Safe Route` → `Report Incident` → `Reach Destination Safely`
-
----
-
-## 9. Functional Requirements
-
-### Dashboard
-- User Login
-- Live CCTV Feed
-- Heatmap
-- KPI Cards
-- AI Recommendations
-- Alerts
-- Reports
-
-### Monitoring
-- Crowd Detection
-- Tracking
-- Counting
-- Density
-- Speed
-- Direction
-
-### AI
-- Risk Prediction
-- Congestion Detection
-- Bottleneck Detection
-- Crowd Simulation
-- Recommendation Engine
-
-### Management
-- Camera Management
-- Gate Control
-- Security Deployment
-- User Management
-- Incident Management
-
-### Citizen App
-- Crowd Alerts
-- Navigation
-- SOS
-- Incident Reporting
-
----
-
-## 10. Non-Functional Requirements
-
-### Performance
-- Dashboard loads within 2 seconds
-- Real-time updates
-- Low latency
-- Scalable architecture
-
-### Security
-- JWT Authentication
-- Role-Based Access Control
-- HTTPS
-- Data Encryption
-- Secure APIs
-
-### Reliability
-- 99.9% uptime
-- Automatic recovery
-- Failover support
-
-### Scalability
-- Support 100+ Cameras
-- Support 1000+ Concurrent Users
-- Support 10,000+ Daily Events
-
-### Usability
-- Dark Theme
-- Responsive Design
-- Accessible UI
-- Fast Navigation
-- Clear Information Hierarchy
-
----
-
-## 11. Product Features
-
-### Core Features
-- AI Crowd Monitoring
-- Heatmaps
-- Risk Prediction
-- AI Recommendations
-- Live Dashboard
-- Digital Twin
-- Crowd Simulation
-- Reports
-- Alerts
-
-### Advanced Features
-- Voice Commands
-- AI Assistant
-- Multilingual Announcements
-- IoT Integration
-- Historical Analytics
-- Predictive Analytics
-
----
-
-## 12. Competitive Advantages
-Unlike conventional CCTV monitoring systems, CrowdShield AI offers:
-- Predictive risk forecasting instead of reactive monitoring.
-- Multi-source intelligence by combining Computer Vision, IoT sensors, and citizen reports.
-- AI-generated operational recommendations rather than raw alerts.
-- Citizen-facing safety features alongside an authority command center.
-- Digital Twin and simulation capabilities for planning and response.
-
----
-
-## 13. Business Value
-
-**For authorities:**
-- Faster decision-making
-- Better resource allocation
-- Improved public safety
-- Lower operational risk
-
-**For citizens:**
-- Safer navigation
-- Timely alerts
-- Better event experience
-
----
-
-## 14. Risks & Mitigation
-| Risk | Mitigation Strategy |
-|---|---|
-| Camera failure | Multi-modal data fusion |
-| Network outages | Edge processing, Offline dashboard support |
-| Sensor inaccuracies | AI confidence scoring |
-| False positives | Human approval for critical actions |
-| Large event scaling | Scalable cloud architecture |
+## 7. System Architecture
+1. **ESP32 Glove:** Captures analog and I2C data, serializes it, and sends it via WebSockets.
+2. **Node.js Server:** Acts as the central hub, receiving raw data and forwarding it to the ML service.
+3. **Python FastAPI (ML Service):** Receives the forwarded data array, normalizes it using `calibration_profile.json`, runs inference, and returns the result.
+4. **Node.js Server:** Receives the prediction and broadcasts it to the connected React Native mobile client.
+5. **React Native App:** Updates the UI and triggers Text-to-Speech.

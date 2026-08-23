@@ -73,9 +73,9 @@ export const TranslationScreen = () => {
     });
   };
 
-  // Auto-speak when a new prediction arrives
+  // Auto-speak when a new prediction arrives and confidence is at least 70%
   useEffect(() => {
-    if (isRecognizing && predictionData && predictionData.sign) {
+    if (isRecognizing && predictionData && predictionData.sign && predictionData.confidence >= 70) {
       if (predictionData.sign !== lastSpokenSign) {
         setLastSpokenSign(predictionData.sign);
         handleSpeak(predictionData.sign);

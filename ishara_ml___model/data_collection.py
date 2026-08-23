@@ -6,6 +6,9 @@ import csv
 import serial
 import serial.tools.list_ports
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 PORT = "COM9"          # Change to your COM port or select interactively
 BAUD = 115200
 SAMPLES = 500
@@ -47,6 +50,7 @@ def read_valid_sample(ser):
     """Read a single line from serial and parse exactly 11 numeric sensor values."""
     raw_bytes = ser.readline()
     if not raw_bytes:
+        print("⚠️ [DEBUG] No data received from ESP32. Is it powered on and sending data?")
         return None
     line = raw_bytes.decode('utf-8', errors='ignore').strip()
     if not line:
@@ -54,12 +58,47 @@ def read_valid_sample(ser):
     
     parts = [p.strip() for p in line.split(',') if p.strip() != '']
     if len(parts) != 11:
+        print(f"⚠️ [DEBUG] Invalid data length from ESP32: received {len(parts)} parts instead of 11. Data: '{line}'")
         return None
     
     try:
         return [float(v) for v in parts]
     except ValueError:
+        print(f"⚠️ [DEBUG] Could not parse numeric values from ESP32 data: '{line}'")
         return None
+
+
+def normalize_sample(raw_values, profile):
+    """Normalize flex sensors to 0.0-1.0 percentages and center IMU values using calibration profile."""
+    if not profile:
+        return raw_values # Pass through if no profile
+        
+    flex_min = profile.get("flex_min", [3000.0] * 5)
+    flex_max = profile.get("flex_max", [1000.0] * 5)
+    imu_offsets = profile.get("imu_offsets", [0.0] * 6)
+    
+    normalized = []
+    
+    # 1. Flex Sensors (0-4)
+    for i in range(5):
+        raw = raw_values[i]
+        c_min = flex_min[i]
+        c_max = flex_max[i]
+        if c_min == c_max:
+            val = 0.0
+        else:
+            val = (raw - c_min) / (c_max - c_min)
+        val = max(0.0, min(1.0, val)) # Constrain to [0.0, 1.0]
+        normalized.append(round(val, 4))
+        
+    # 2. IMU Sensors (5-10)
+    for i in range(6):
+        raw = raw_values[5 + i]
+        offset = imu_offsets[i]
+        val = raw - offset
+        normalized.append(round(val, 2))
+        
+    return normalized
 
 
 def sample_duration(ser, duration_sec=3.0, prompt_text=""):
@@ -208,12 +247,12 @@ def main():
         elif choice == "3":
             print("⏩ Skipping calibration.")
         else:
-            perform_calibration(ser)
+            saved_profile = perform_calibration(ser)
     else:
         print("ℹ️ No previous calibration profile found.")
         choice = input("Would you like to run the Calibration Wizard now? [Y/n]: ").strip().lower()
         if choice != "n":
-            perform_calibration(ser)
+            saved_profile = perform_calibration(ser)
         else:
             print("⏩ Proceeding without calibration.")
 
@@ -250,7 +289,8 @@ def main():
             if values is None:
                 continue
 
-            row = values + [gesture]
+            normalized_values = normalize_sample(values, saved_profile)
+            row = normalized_values + [gesture]
             writer.writerow(row)
             count += 1
 
