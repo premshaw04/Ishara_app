@@ -22,11 +22,12 @@
     "web": {},
     "plugins": [
       "expo-speech-recognition",
-      "expo-font"
+      "expo-font",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
-        "projectId": "e1c9b7c4-1ca4-42dd-bcf9-f98ceda548a8"
+        "projectId": "99d982a8-c007-47af-94a3-e27b0e4d78c6"
       }
     }
   }

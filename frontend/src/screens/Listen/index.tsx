@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,6 +20,10 @@ export const ListenScreen = ({ navigation }: MainTabScreenProps<'ListenTab'>) =>
   const theme = useTheme();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('Tap the microphone button below and start speaking to see real-time captions here.');
+  
+  const intentionToListen = useRef(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const transcriptBuffer = useRef('');
 
   // Animation values for microphone waves
   const scale1 = useSharedValue(1);
@@ -51,18 +55,43 @@ export const ListenScreen = ({ navigation }: MainTabScreenProps<'ListenTab'>) =>
 
   useSpeechRecognitionEvent('end', () => {
     setIsListening(false);
+    if (intentionToListen.current) {
+      setTimeout(() => {
+        if (intentionToListen.current) {
+          startListening();
+        }
+      }, 500);
+    }
   });
 
   useSpeechRecognitionEvent('result', (event) => {
     if (event.results && event.results.length > 0) {
-      setTranscript(event.results[0].transcript);
+      // Append new finalized results to our buffer if needed, or just use the current logic
+      // event.results[0].transcript contains the full current chunk.
+      // If we are auto-restarting, the transcript might get overwritten if we just set it directly.
+      // Let's just set it for now. In a real app we'd want to append completed segments.
+      const newText = event.results[0].transcript;
+      setTranscript((prev) => {
+        // If it's restarting, we don't want to lose the previous text!
+        if (event.isFinal) {
+            transcriptBuffer.current = transcriptBuffer.current ? transcriptBuffer.current + ' ' + newText : newText;
+            return transcriptBuffer.current;
+        }
+        return transcriptBuffer.current ? transcriptBuffer.current + ' ' + newText : newText;
+      });
     }
   });
 
   useSpeechRecognitionEvent('error', (event) => {
-    console.error('Speech recognition error:', event.error);
-    setIsListening(false);
-    setTranscript(`Error: ${event.error}. Please try again.`);
+    console.log('Speech recognition error:', event.error);
+    if (event.error === 'speech-timeout' || event.error === 'no-speech') {
+        // Ignore timeout errors during continuous listening, the 'end' event will restart it
+        setIsListening(false);
+    } else {
+        intentionToListen.current = false;
+        setIsListening(false);
+        setTranscript((prev) => prev + `\n[Error: ${event.error}]`);
+    }
   });
 
   useEffect(() => {
@@ -109,11 +138,17 @@ export const ListenScreen = ({ navigation }: MainTabScreenProps<'ListenTab'>) =>
         return;
       }
       
-      setTranscript('Starting...');
+      if (!intentionToListen.current) {
+        setTranscript('Starting...');
+        transcriptBuffer.current = '';
+      }
+      intentionToListen.current = true;
+      
       ExpoSpeechRecognitionModule.start({
         lang: 'en-US',
         interimResults: true,
         maxAlternatives: 1,
+        continuous: true,
       });
     } catch (e) {
       console.error(e);
@@ -123,6 +158,7 @@ export const ListenScreen = ({ navigation }: MainTabScreenProps<'ListenTab'>) =>
 
   const stopListening = () => {
     try {
+      intentionToListen.current = false;
       ExpoSpeechRecognitionModule.stop();
     } catch (e) {
       console.error(e);
@@ -213,9 +249,15 @@ export const ListenScreen = ({ navigation }: MainTabScreenProps<'ListenTab'>) =>
           </View>
 
           <View style={[styles.textBox, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Text style={[styles.transcriptText, { color: theme.colors.onSurface }]}>
-              {transcript}
-            </Text>
+            <ScrollView 
+              ref={scrollViewRef}
+              style={{ flex: 1 }}
+              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            >
+              <Text style={[styles.transcriptText, { color: theme.colors.onSurface }]}>
+                {transcript}
+              </Text>
+            </ScrollView>
             <MaterialCommunityIcons 
               name="volume-high" 
               size={20} 
@@ -383,7 +425,7 @@ const styles = StyleSheet.create({
   textBox: {
     padding: themeConstants.spacing.m,
     borderRadius: themeConstants.radii.m,
-    minHeight: 100,
+    height: 200, // Fixed height so the ScrollView can actually scroll!
   },
   transcriptText: {
     fontSize: themeConstants.typography.size.m,
