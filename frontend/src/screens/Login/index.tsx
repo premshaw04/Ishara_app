@@ -42,7 +42,7 @@ export const LoginScreen = () => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{ name: 'Main' as never }],
+                routes: [{ name: 'Drawer' as never }],
               })
             );
           }
@@ -71,7 +71,7 @@ export const LoginScreen = () => {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'Main' as never }],
+          routes: [{ name: 'Drawer' as never }],
         })
       );
     }

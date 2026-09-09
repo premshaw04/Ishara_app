@@ -22,7 +22,7 @@ export const RegisterScreen = () => {
   const theme = useTheme();
   const navigation = useNavigation<AuthStackScreenProps<'Register'>['navigation']>();
   const dispatch = useDispatch<AppDispatch>();
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +30,7 @@ export const RegisterScreen = () => {
     webClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
     androidClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
     iosClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
-    expoClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
+    //   expoClientId: '76111054859-aicbgdvp8hto30a3rrudb9gud8echcfn.apps.googleusercontent.com',
   });
 
   React.useEffect(() => {
@@ -43,7 +43,7 @@ export const RegisterScreen = () => {
             navigation.dispatch(
               CommonActions.reset({
                 index: 0,
-                routes: [{ name: 'Main' as never }],
+                routes: [{ name: 'Drawer' as never }],
               })
             );
           }
@@ -67,7 +67,7 @@ export const RegisterScreen = () => {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
-          routes: [{ name: 'Main' as never }],
+          routes: [{ name: 'Drawer' as never }],
         })
       );
     } catch (error: any) {
@@ -81,7 +81,7 @@ export const RegisterScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Header title="" showBack />
-      
+
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <SectionTitle title="Create Account" style={{ fontSize: 28, color: theme.colors.primary }} />
@@ -134,10 +134,10 @@ export const RegisterScreen = () => {
               />
             )}
           />
-          
-          <PrimaryButton 
-            title="Register" 
-            onPress={handleSubmit(onSubmit)} 
+
+          <PrimaryButton
+            title="Register"
+            onPress={handleSubmit(onSubmit)}
             loading={loading}
             disabled={loading}
             style={styles.button}
@@ -149,9 +149,9 @@ export const RegisterScreen = () => {
             <View style={styles.dividerLine} />
           </View>
 
-          <GoogleButton 
-            onPress={() => promptAsync()} 
-            disabled={!request || loading} 
+          <GoogleButton
+            onPress={() => promptAsync()}
+            disabled={!request || loading}
           />
         </View>
 

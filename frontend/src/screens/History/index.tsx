@@ -9,8 +9,10 @@ import { Skeleton } from '../../components/Indicators/Skeleton';
 import { historyService } from '../../api/services/historyService';
 import { ttsService } from '../../services/ttsService';
 import { showToast } from '../../components';
+import { useNavigation } from '@react-navigation/native';
 
 export const HistoryScreen = () => {
+  const navigation = useNavigation();
 
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -256,6 +258,13 @@ export const HistoryScreen = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, StatusBar.currentHeight || 0) + 10 }]}>
+        <IconButton
+          icon="menu"
+          size={28}
+          iconColor={theme.colors.onSurface}
+          onPress={() => (navigation as any).toggleDrawer()}
+          style={styles.headerMenuIcon}
+        />
         <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>History</Text>
         <IconButton
           icon="delete-sweep-outline"
@@ -315,6 +324,10 @@ const styles = StyleSheet.create({
   headerIcon: {
     position: 'absolute',
     right: themeConstants.spacing.m,
+  },
+  headerMenuIcon: {
+    position: 'absolute',
+    left: themeConstants.spacing.s,
   },
   searchContainer: {
     paddingHorizontal: themeConstants.spacing.l,

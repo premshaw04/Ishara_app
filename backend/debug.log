@@ -1,0 +1,33 @@
+[2026-08-13T20:29:07.148Z] Upload hit. File: true, Body: {}
+Error: Server returned unexpected status code - 403
+undefined
+[2026-08-13T20:32:04.067Z] Upload hit. File: true, Body: {}
+Error: Server returned unexpected status code - 403
+undefined
+[2026-08-13T20:33:47.615Z] Upload hit. File: true, Body: {}
+Error: Server returned unexpected status code - 403
+undefined
+[2026-08-13T20:34:49.259Z] Upload hit. File: true, Body: {}
+Error: Server returned unexpected status code - 403
+undefined
+[2026-08-13T20:37:55.036Z] Upload hit. File: true, Body: {}
+Error: Server returned unexpected status code - 403
+undefined
+[2026-08-13T20:41:56.460Z] Upload hit. File: true, Body: {}
+Error: Cloudinary API Error: [prodenv:36503f2c55bde8ac39394e50123130] Request forbidden due to missing permissions (actions=["create"])
+Error: Cloudinary API Error: [prodenv:36503f2c55bde8ac39394e50123130] Request forbidden due to missing permissions (actions=["create"])
+    at uploadProfilePicture (D:\ishara_app\Ishara_app\backend\src\controllers\profileController.js:159:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-08-13T20:45:07.106Z] Upload hit. File: true, Body: {}
+Error: Cloudinary API Error: Invalid Signature ff79e085b6c15194f799717236d2dd18f161e7f0. String to sign - 'timestamp=1786653907'.
+Error: Cloudinary API Error: Invalid Signature ff79e085b6c15194f799717236d2dd18f161e7f0. String to sign - 'timestamp=1786653907'.
+    at uploadProfilePicture (D:\ishara_app\Ishara_app\backend\src\controllers\profileController.js:157:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[2026-08-13T20:47:45.702Z] Upload hit. File: true, Body: {}
+[2026-08-13T20:48:11.173Z] Upload hit. File: true, Body: {}
+[2026-08-13T20:54:02.517Z] Upload hit. File: true, Body: {}
+[2026-08-13T20:54:39.739Z] Upload hit. File: true, Body: {}
+[2026-08-13T20:57:04.336Z] Upload hit. File: true, Body: {}
+[2026-08-13T21:00:58.494Z] Upload hit. File: true, Body: {}
+[2026-08-21T15:06:19.464Z] Upload hit. File: true, Body: {}
+[2026-09-08T17:53:37.587Z] Upload hit. File: true, Body: {}

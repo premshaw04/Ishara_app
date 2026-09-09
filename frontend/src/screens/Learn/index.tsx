@@ -33,6 +33,12 @@ export const LearnScreen = ({ navigation }: Props) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
       <View style={styles.header}>
+        <Pressable 
+          onPress={() => (navigation as any).toggleDrawer()} 
+          style={styles.menuButton}
+        >
+          <Text style={{ fontSize: 24, color: theme.colors.onBackground }}>☰</Text>
+        </Pressable>
         <Text style={[styles.title, { color: theme.colors.onBackground }]}>Learn</Text>
       </View>
       
@@ -99,7 +105,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  menuButton: {
+    position: 'absolute',
+    left: 16,
+    top: 16,
+    padding: 4,
   },
   title: {
     fontSize: 24,

@@ -20,6 +20,7 @@ app.use(express.json());
 app.use('/auth', require('./routes/authRoutes'));
 app.use('/profile', require('./routes/profileRoutes'));
 app.use('/history', require('./routes/historyRoutes'));
+app.use('/api/speech', require('./routes/speechRoutes'));
 
 // Initialize Socket.io
 setupSockets(server);

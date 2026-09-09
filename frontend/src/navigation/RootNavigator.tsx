@@ -4,7 +4,7 @@ import { RootStackParamList } from './types';
 
 // Navigators
 import { AuthNavigator } from './AuthNavigator';
-import { MainTabNavigator } from './MainTabNavigator';
+import { DrawerNavigator } from './DrawerNavigator';
 
 // Fullscreen Screens
 import { SplashScreen } from '../screens/Splash';
@@ -26,7 +26,7 @@ export const RootNavigator = () => {
       
       {/* Nested Navigators */}
       <Stack.Screen name="Auth" component={AuthNavigator} />
-      <Stack.Screen name="Main" component={MainTabNavigator} />
+      <Stack.Screen name="Drawer" component={DrawerNavigator} />
       
       {/* Fullscreen screens that hide the bottom tab bar */}
       <Stack.Screen 

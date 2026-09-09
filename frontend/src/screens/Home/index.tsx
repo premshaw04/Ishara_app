@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { MainTabScreenProps } from '../../navigation/types';
+import { MainTabScreenProps, DrawerNavScreenProps } from '../../navigation/types';
 import { useDispatch } from 'react-redux';
 import { connectWebSocket } from '../../store/middleware/websocketMiddleware';
 import { GloveStatusCard } from '../../components/Cards/GloveStatusCard';
 import { PrimaryButton } from '../../components/Buttons/PrimaryButton';
 import { themeConstants } from '../../theme/themeConstants';
 
+// We can just use the navigation typed correctly if needed, or any.
 type HomeScreenProps = MainTabScreenProps<'HomeTab'>;
 
 export const HomeScreen: React.FC<HomeScreenProps> = () => {
@@ -29,8 +30,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = () => {
         
         {/* Custom Header */}
         <View style={styles.headerContainer}>
-          {/* Removed unused Hamburger Menu for now since we use bottom tabs */}
-          <View style={{ width: 28 }} />
+          {/* Hamburger Menu */}
+          <TouchableOpacity onPress={() => navigation.toggleDrawer()} style={{ padding: 4 }}>
+            <Icon name="menu" size={28} color={theme.colors.onSurface} />
+          </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Image 
               source={theme.dark ? require('../../assets/tagline_dark.png') : require('../../assets/tagline.png')} 

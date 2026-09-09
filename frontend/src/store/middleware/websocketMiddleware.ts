@@ -21,7 +21,7 @@ export const startWsRecognition = () => ({ type: WS_START_RECOGNITION });
 export const stopWsRecognition = () => ({ type: WS_STOP_RECOGNITION });
 
 // Force connection to port 5000 (bypassing any Expo Metro .env caching bugs)
-const WS_BASE_URL = 'http://10.87.187.36:5000';
+const WS_BASE_URL = 'http://10.94.200.48:3000';
 
 export const websocketMiddleware: Middleware = store => {
   let socket: Socket | null = null;

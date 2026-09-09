@@ -2,19 +2,31 @@
   "expo": {
     "name": "Ishara",
     "slug": "ishara",
+    "scheme": "ishara",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow Ishara to securely recognize user speech",
+        "NSMicrophoneUsageDescription": "Allow Ishara to access the microphone for speech-to-text"
+      }
     },
     "android": {
-      "package": "com.anonymous.ishara"
+      "package": "com.anonymous.ishara",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {},
+    "plugins": [
+      "expo-speech-recognition",
+      "expo-font"
+    ],
     "extra": {
       "eas": {
-        "projectId": "b0bb5395-f24c-499e-81c6-fc672a0d4e5e"
+        "projectId": "e1c9b7c4-1ca4-42dd-bcf9-f98ceda548a8"
       }
     }
   }

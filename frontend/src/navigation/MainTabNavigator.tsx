@@ -6,10 +6,9 @@ import { useTheme } from 'react-native-paper';
 
 // Screens
 import { HomeScreen } from '../screens/Home';
-import { HistoryScreen } from '../screens/History';
+import { ListenScreen } from '../screens/Listen';
 import { LearnScreen } from '../screens/Learn';
-import { ProfileScreen } from '../screens/Profile';
-
+import { HistoryScreen } from '../screens/History';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const MainTabNavigator = () => {
@@ -32,14 +31,14 @@ export const MainTabNavigator = () => {
             case 'HomeTab':
               iconName = 'home';
               break;
-            case 'HistoryTab':
-              iconName = 'history';
+            case 'ListenTab':
+              iconName = 'microphone';
               break;
             case 'LearnTab':
               iconName = 'book-open-page-variant';
               break;
-            case 'ProfileTab':
-              iconName = 'account';
+            case 'HistoryTab':
+              iconName = 'history';
               break;
           }
 
@@ -52,9 +51,9 @@ export const MainTabNavigator = () => {
         options={{ tabBarLabel: 'Home' }} 
       />
       <Tab.Screen 
-        name="HistoryTab" 
-        component={HistoryScreen} 
-        options={{ tabBarLabel: 'History' }} 
+        name="ListenTab" 
+        component={ListenScreen} 
+        options={{ tabBarLabel: 'Listen' }} 
       />
       <Tab.Screen 
         name="LearnTab" 
@@ -62,9 +61,9 @@ export const MainTabNavigator = () => {
         options={{ tabBarLabel: 'Learn' }} 
       />
       <Tab.Screen 
-        name="ProfileTab" 
-        component={ProfileScreen} 
-        options={{ tabBarLabel: 'Profile' }} 
+        name="HistoryTab" 
+        component={HistoryScreen} 
+        options={{ tabBarLabel: 'History' }} 
       />
     </Tab.Navigator>
   );

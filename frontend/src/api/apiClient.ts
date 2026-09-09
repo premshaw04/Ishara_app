@@ -7,7 +7,7 @@ declare var process: any;
 
 
 // Force connection to port 5000 (bypassing any Expo Metro .env caching bugs)
-export const BASE_URL = 'http://10.87.187.36:5000';
+export const BASE_URL = 'http://10.94.200.48:3000';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

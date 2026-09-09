@@ -19,7 +19,7 @@ export const SplashScreen = () => {
 
   useEffect(() => {
     if (!isHydrating) {
-      let nextRoute = 'Main';
+      let nextRoute = 'Drawer';
       if (!hasSeenOnboarding || !isAuthenticated) {
         nextRoute = 'Auth';
       }
